@@ -1,0 +1,1 @@
+window.REEKS_DATA = {"v":2,"generated":"2026-11-25T10:20:10.472Z","season":"2026-2027","totals":{"series":0,"matches":0,"goals":0,"scorers":0,"hattricks":0},"series":[],"top":[],"single":[],"rw":[],"rm":[]};
