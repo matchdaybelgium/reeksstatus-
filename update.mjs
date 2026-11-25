@@ -16,6 +16,15 @@ try {
 const save = () => { fs.mkdirSync('cache', { recursive: true }); fs.writeFileSync(CACHE, JSON.stringify(cache)); };
 console.log(`Seizoen ${label}: ${Object.keys(cache.m).length} matchen al bekend`);
 
+// Eerst een gewoon testverzoek: toont wat RBFA antwoordt als het misloopt.
+try {
+  const r = await fetch('https://www.rbfa.be/graphql', { method: 'POST', headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ operationName: 'GetSeriesDetail', variables: { seriesId: 'CHP_136238', language: 'nl' }, extensions: { persistedQuery: { version: 1, sha256Hash: 'bd0d7fafc4d4fb181fbe2fd02cc9949041a392834d02d76a7b9a13a1a271251f' } } }) });
+  const txt = await r.text();
+  console.log(`RBFA-test: HTTP ${r.status} · ${txt.slice(0, 200).replace(/\s+/g, ' ')}`);
+  if (!r.ok || !txt.includes('"data"')) { console.error('RBFA weigert dit verzoek. data.js blijft ongewijzigd.'); process.exit(1); }
+} catch (e) { console.error('RBFA niet bereikbaar: ' + e.message + (e.cause ? ' (' + e.cause.message + ')' : '')); process.exit(1); }
+
 const t0 = Date.now();
 let lastLog = 0;
 try {
@@ -30,6 +39,7 @@ try {
     }
   });
   const data = Collector.build(r.series, r.matchesBySeries, { season: r.season });
+  if (!data.totals.matches) { console.error('Geen matchen gevonden: data.js blijft ongewijzigd.'); process.exit(1); }
   fs.writeFileSync('data.js', 'window.REEKS_DATA = ' + JSON.stringify(data) + ';\n');
   console.log(`Klaar: ${data.totals.matches} matchen, ${data.totals.goals} goals, ${r.failed} mislukt.`);
   if (r.failed > 50) process.exitCode = 1;
