@@ -3,7 +3,15 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Matchday Belgium</title>
+<title>Matchday Belgium: uitslagen, topscorers en schorsingen van het Belgisch amateurvoetbal</title>
+<meta name="description" content="Uitslagen met scheidsrechter, topscorers, spelers van de week en de maand, kaarten, schorsingen en klassementen van alle Belgische reeksen van 1e Afdeling tot 4e Provinciaal.">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Matchday Belgium">
+<meta property="og:title" content="Matchday Belgium: het Belgisch amateurvoetbal in cijfers">
+<meta property="og:description" content="Uitslagen, topscorers, spelers van de week, schorsingen en klassementen van 129 Belgische reeksen.">
+<meta name="theme-color" content="#d81b2c">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23d81b2c'/%3E%3Ccircle cx='16' cy='16' r='9' fill='none' stroke='%23fff' stroke-width='2'/%3E%3Cpath d='M16 11l4 3-1.5 4.6h-5L12 14z' fill='%23fff'/%3E%3C/svg%3E">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"WebSite","name":"Matchday Belgium","inLanguage":"nl-BE","description":"Uitslagen, topscorers, spelers van de week, schorsingen en klassementen van het Belgisch amateurvoetbal."}</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -343,6 +351,7 @@ pre,.scroll{overflow-x:auto}html{scroll-padding-top:130px}
 
 <footer class="band"><div class="wrap">
   <p class="brand">Matchday <span>Belgium</span></p>
+  <p><a href="reeks/">Overzicht van alle reeksen</a></p>
   <p>Data van <a href="https://www.rbfa.be">rbfa.be</a> (digitale wedstrijdbladen). België-overzichten: <span id="f-stamp">nog niet bijgewerkt</span>. Reeksen worden live opgehaald.</p>
   <p>Goals = gewone goals + penaltygoals, eigen doelpunten tellen niet. Bij gelijke stand gaat het hoogste niveau voor, daarna minder speelminuten. Minuten worden berekend uit opstelling en wissels (90 min per match).</p>
   <p><button class="more" style="margin:0" id="reload" type="button">Reeks opnieuw ophalen</button></p>
@@ -963,6 +972,9 @@ $('#v-r-schorsing').addEventListener('change', e => { if (e.target.id === 'limit
 $('#v-r-schorsing').addEventListener('click', e => { if (e.target.closest('#onlyMine')) { S.sOnlyMine = !S.sOnlyMine; renderSchorsing(); } });
 addEventListener('hashchange', render);
 
+// link vanaf een reekspagina: ?reeks=CHP_...
+{ const qr = new URLSearchParams(location.search).get('reeks');
+  if (qr && /^(CHP|CUP)_\d+$/.test(qr)) { store.set('rs-sid', qr); if (!RVIEWS[location.hash.slice(1)]) location.hash = 'r-ploeg'; } }
 renderBelgie();
 render();
 }

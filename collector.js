@@ -5,6 +5,7 @@ var Collector = (function () {
   const H = {
     cal: 'bf4ec6f8c53154da0406f98cd9d3562bfb856eee3db4345b589bf2c2a8ca9da9',
     md: 'e4194e20528d04a046bd71ea20a044dbd445144b1104f5e6f5992cfdcf43a793',
+    rk: 'b138a3bac2675586dcbd76ae5d7e89287c69d4e319f66484be9ccca1e862395a',
     search: 'ab24521d815f3fb7949955fbe2fbf29af563e12d761eb1f0f66a187cff539d53'
   };
   const PROV_VV = { Antw: 'Antwerpen', 'Vl Brab': 'Vlaams-Brabant', Limb: 'Limburg', Ovl: 'Oost-Vlaanderen', Wvl: 'West-Vlaanderen' };
@@ -154,7 +155,20 @@ var Collector = (function () {
     }
     await Promise.all(Array.from({ length: conc }, worker));
     progress(Object.assign({ phase: 'klaar' }, st));
-    return { series, matchesBySeries: out, season: label, failed: st.failed };
+    // klassementen (voor de vindbare reekspagina's)
+    const rankings = [];
+    if (opts.rankings !== false) {
+      progress(Object.assign({ phase: 'klassementen' }, st));
+      for (let i = 0; i < series.length; i += conc) {
+        rankings.push(...await Promise.all(series.slice(i, i + conc).map(s =>
+          gql('GetSeriesRankings', { seriesId: s.id, language: 'nl' }, H.rk).then(d => {
+            const r = (d.seriesRankings && d.seriesRankings.rankings) || [];
+            const g = r.find(x => x.type === 'generalRanking') || r[0];
+            return g ? g.teams : [];
+          }).catch(() => []))));
+      }
+    }
+    return { series, matchesBySeries: out, rankings, season: label, failed: st.failed };
   }
 
   // België-overzichten berekenen
@@ -221,6 +235,69 @@ var Collector = (function () {
     };
   }
 
-  return { gql, season, classify, discoverSeries, compact, minutes, monday, collectAll, build };
+  // ---------- vindbare pagina's per reeks (voor Google) ----------
+  const LV = { 1: '1e Afdeling / D1', 2: '2e Afdeling / D2', 3: '3e Afdeling / D3', 4: '1e Provinciaal', 5: '2e Provinciaal', 6: '3e Provinciaal', 7: '4e Provinciaal' };
+  const escH = v => String(v == null ? '' : v).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  function slug(t) { return String(t).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, ''); }
+  const ICON = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23d81b2c'/%3E%3Ccircle cx='16' cy='16' r='9' fill='none' stroke='%23fff' stroke-width='2'/%3E%3Cpath d='M16 11l4 3-1.5 4.6h-5L12 14z' fill='%23fff'/%3E%3C/svg%3E";
+  const CSS = 'body{margin:0;font:16px/1.55 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:#111317;background:#f5f5f6}a{color:#d81b2c}' +
+    'header{background:#fff;border-bottom:1px solid #e6e7ea;padding:14px max(5vw,16px)}header a{font-weight:900;font-size:20px;color:#111317;text-decoration:none}header a span{color:#d81b2c}' +
+    'main{max-width:1000px;margin:0 auto;padding:28px max(5vw,16px)}h1{font-size:clamp(30px,5vw,44px);line-height:1.08;margin:4px 0 10px}h2{margin:34px 0 10px}h3{margin:22px 0 6px;font-size:18px}' +
+    '.kick{color:#d81b2c;font-weight:600;margin:0}.btn{display:inline-block;background:#d81b2c;color:#fff;text-decoration:none;font-weight:700;padding:12px 18px;border-radius:12px;margin:8px 0}' +
+    'table{width:100%;border-collapse:collapse;background:#fff;border:1px solid #e6e7ea;border-radius:12px;overflow:hidden;font-size:15px}th,td{padding:8px 10px;border-bottom:1px solid #e6e7ea;text-align:left}th{background:#f2f3f5;color:#646b75;font-size:13px}td.n,th.n{text-align:right}' +
+    'ol{background:#fff;border:1px solid #e6e7ea;border-radius:12px;padding:10px 10px 10px 36px}li{padding:3px 0}.note{color:#646b75;font-size:14px}footer{color:#646b75;font-size:14px;padding:24px max(5vw,16px);border-top:1px solid #e6e7ea;background:#fff}' +
+    '.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:6px 18px}.scroll{overflow-x:auto}';
+  function shell(o) {
+    return `<!DOCTYPE html>\n<html lang="nl">\n<head>\n<meta charset="utf-8">\n<meta name="viewport" content="width=device-width, initial-scale=1">\n<title>${escH(o.title)}</title>\n` +
+      `<meta name="description" content="${escH(o.desc)}">\n<link rel="canonical" href="${escH(o.url)}">\n<meta property="og:type" content="website">\n<meta property="og:site_name" content="Matchday Belgium">\n` +
+      `<meta property="og:title" content="${escH(o.title)}">\n<meta property="og:description" content="${escH(o.desc)}">\n<meta property="og:url" content="${escH(o.url)}">\n<link rel="icon" href="${ICON}">\n<style>${CSS}</style>\n</head>\n<body>\n` +
+      `<header><a href="${o.home}">Matchday <span>Belgium</span></a></header>\n<main>\n${o.body}\n</main>\n<footer>Data: digitale wedstrijdbladen van de RBFA. Goals = gewone goals + penaltygoals. Bijgewerkt op ${escH(o.date)}.</footer>\n</body>\n</html>\n`;
+  }
+  function buildPages(series, matchesBySeries, rankings, meta) {
+    const base = meta.base.replace(/\/?$/, '/'), season = meta.season || '', date = new Date(meta.generated || Date.now()).toLocaleDateString('nl-BE', { day: 'numeric', month: 'long', year: 'numeric' });
+    const files = [], links = [];
+    series.forEach((s, si) => {
+      const T = new Map();
+      for (const m of matchesBySeries[si] || []) {
+        const tn = { [m.h[0]]: m.h[1], [m.a[0]]: m.a[1] };
+        for (const pl of m.p) {
+          if (!pl.n || minutes(pl) === null) continue;
+          let t = T.get(pl.t); if (!t) { t = { short: tn[pl.t], P: new Map() }; T.set(pl.t, t); }
+          const k = pl.n.toLowerCase(), r = t.P.get(k) || { n: pl.n, mp: 0, g: 0 };
+          r.mp++; r.g += goalsOf(pl); t.P.set(k, r);
+        }
+      }
+      const rk = (rankings && rankings[si]) || [];
+      const full = new Map(rk.map(t => [String(t.teamId), t.name]));
+      const tname = id => full.get(String(id)) || (T.get(String(id)) || {}).short || '';
+      const teamIds = rk.length ? rk.map(t => String(t.teamId)) : [...T.keys()];
+      const scorers = [...T].flatMap(([id, t]) => [...t.P.values()].map(p => ({ ...p, t: id }))).filter(p => p.g > 0).sort((a, b) => b.g - a.g || a.n.localeCompare(b.n)).slice(0, 25);
+      const name = s.name, file = 'reeks/' + slug(name) + '.html', url = base + file;
+      const clubs = teamIds.map(tname).filter(Boolean);
+      const body = `<p class="kick">${escH(LV[s.lvl] || '')} · seizoen ${escH(season)}</p>\n<h1>${escH(name)}</h1>\n` +
+        `<p>Klassement, topscorers en alle spelers van ${escH(name)}. Bijgewerkt op ${escH(date)}.</p>\n<a class="btn" href="../?reeks=${encodeURIComponent(s.id)}#r-ploeg">Bekijk alles live: uitslagen, scheidsrechters, schorsingen</a>\n` +
+        (rk.length ? `<h2>Klassement</h2>\n<div class="scroll"><table><thead><tr><th>#</th><th>Ploeg</th><th class="n">M</th><th class="n">W</th><th class="n">G</th><th class="n">V</th><th class="n">Doelsaldo</th><th class="n">Punten</th></tr></thead><tbody>` +
+          rk.map(t => `<tr><td>${escH(t.position)}</td><td>${escH(t.name)}</td><td class="n">${escH(t.matchesPlayed)}</td><td class="n">${escH(t.matchesWon)}</td><td class="n">${escH(t.matchesDrawn)}</td><td class="n">${escH(t.matchesLost)}</td><td class="n">${escH(t.goalsFor)}-${escH(t.goalsAgainst)}</td><td class="n"><b>${escH(t.points)}</b></td></tr>`).join('') + '</tbody></table></div>\n' : '') +
+        (scorers.length ? `<h2>Topscorers ${escH(name)}</h2>\n<ol>${scorers.map(p => `<li><b>${escH(p.n)}</b> (${escH(tname(p.t))}): ${p.g} ${p.g === 1 ? 'goal' : 'goals'} in ${p.mp} matchen</li>`).join('')}</ol>\n` : '') +
+        `<h2>Spelers per ploeg</h2>\n` + teamIds.map(id => { const t = T.get(id); if (!t) return '';
+          const ps = [...t.P.values()].sort((a, b) => b.g - a.g || b.mp - a.mp || a.n.localeCompare(b.n));
+          return `<h3>${escH(tname(id))}</h3>\n<div class="scroll"><table><thead><tr><th>Speler</th><th class="n">Matchen</th><th class="n">Goals</th></tr></thead><tbody>${ps.map(p => `<tr><td>${escH(p.n)}</td><td class="n">${p.mp}</td><td class="n">${p.g}</td></tr>`).join('')}</tbody></table></div>`; }).join('\n');
+      files.push({ path: file, content: shell({ title: `${name}: klassement, topscorers en spelers ${season} | Matchday Belgium`, desc: `${name} (${LV[s.lvl] || ''}, ${season}): klassement, topscorers en spelers van ${clubs.slice(0, 6).join(', ')}${clubs.length > 6 ? ' en meer' : ''}.`, url, home: '../', date, body }) });
+      links.push({ s, file, url });
+    });
+    // overzicht van alle reeksen
+    const byLv = {};
+    links.forEach(l => (byLv[l.s.lvl] = byLv[l.s.lvl] || []).push(l));
+    const ovBody = `<p class="kick">Seizoen ${escH(season)}</p>\n<h1>Alle reeksen van 1e Afdeling tot 4e Provinciaal</h1>\n<p>Kies een reeks voor het klassement, de topscorers en alle spelers.</p>\n` +
+      Object.keys(byLv).sort().map(l => `<h2>${escH(LV[l])}</h2>\n<div class="grid">${byLv[l].map(x => `<a href="${escH(x.file.replace('reeks/', ''))}">${escH(x.s.name)}</a>`).join('')}</div>`).join('\n');
+    files.push({ path: 'reeks/index.html', content: shell({ title: `Alle reeksen ${season}: klassementen en topscorers | Matchday Belgium`, desc: `Klassementen, topscorers en spelers van alle ${series.length} Belgische reeksen van 1e Afdeling tot 4e Provinciaal.`, url: base + 'reeks/', home: '../', date, body: ovBody }) });
+    const today = new Date(meta.generated || Date.now()).toISOString().slice(0, 10);
+    files.push({ path: 'sitemap.xml', content: `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n` +
+      [base, base + 'reeks/', ...links.map(l => l.url)].map(u => `  <url><loc>${escH(u)}</loc><lastmod>${today}</lastmod></url>`).join('\n') + '\n</urlset>\n' });
+    files.push({ path: 'robots.txt', content: `User-agent: *\nAllow: /\nDisallow: /update.html\nSitemap: ${base}sitemap.xml\n` });
+    return files;
+  }
+
+  return { gql, season, classify, discoverSeries, compact, minutes, monday, collectAll, build, buildPages, slug };
 })();
 if (typeof module !== 'undefined') module.exports = Collector;
