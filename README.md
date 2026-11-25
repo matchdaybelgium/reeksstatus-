@@ -1,4 +1,4 @@
-# Reeksstats
+# Matchday Belgium
 
 Voetbalstatistieken van 1e Afdeling/D1 tot 4e Provinciaal, met data van RBFA.
 Site: https://amer-gh.github.io/reeksstatus-/
