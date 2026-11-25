@@ -104,6 +104,11 @@ section.blk{scroll-margin-top:130px}
 @media(max-width:640px){.big3{grid-template-columns:minmax(0,1fr)}.big3 .rcard,.big3 .p1,.big3 .p2,.big3 .p3{grid-column:auto;grid-row:auto;padding-top:18px}}
 .list li.res{grid-template-columns:minmax(0,1fr) auto minmax(0,1fr)}
 .res .t{font-weight:600;overflow-wrap:anywhere}.res .h{text-align:right}
+.res .meta{grid-column:1/-1;text-align:center;font-size:13px;color:var(--mute);margin-top:-4px}
+.res.click{cursor:pointer}.res.click:hover .sc{background:var(--or-soft)}
+.res .det{grid-column:1/-1;border-top:1px dashed var(--line);padding-top:8px;display:grid;gap:6px}
+.res .evs{display:grid;grid-template-columns:1fr 1fr;gap:4px 16px;font-size:14px}.res .eh{grid-column:1;text-align:right}.res .ea{grid-column:2}
+#limit{min-height:36px;border-radius:8px;border:1px solid var(--line);background:var(--card);color:var(--ink);padding:4px 8px}
 .res .sc{font:800 22px/1 "Barlow Condensed",Barlow,sans-serif;background:var(--soft);border-radius:8px;padding:6px 10px;min-width:64px;text-align:center;white-space:nowrap}
 .matches{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,340px),1fr));gap:14px}
 .mcard{background:var(--card);border-radius:18px;box-shadow:var(--shadow);padding:16px;display:grid;grid-template-columns:auto minmax(0,1fr);gap:14px;align-items:center}
@@ -242,6 +247,7 @@ pre,.scroll{overflow-x:auto}html{scroll-padding-top:130px}
       <button class="chip" data-go="r-week" type="button">Spelers van de week</button>
       <button class="chip" data-go="r-maand" type="button">Spelers van de maand</button>
       <button class="chip" data-go="r-kaarten" type="button">Kaarten</button>
+      <button class="chip" data-go="r-schorsing" type="button">Schorsingen</button>
       <button class="chip" data-go="r-minuten" type="button">Minuten</button>
       <button class="chip" data-go="r-klassement" type="button">Klassement</button>
     </div>
@@ -250,6 +256,7 @@ pre,.scroll{overflow-x:auto}html{scroll-padding-top:130px}
     <div class="tools" style="justify-content:space-between"><h2 id="vtitle">Mijn ploeg</h2><input id="q" type="search" placeholder="Zoek speler of ploeg" aria-label="Zoek speler of ploeg"></div>
     <section class="view" id="v-r-ploeg"></section>
     <section class="view" id="v-r-uitslagen"></section>
+    <section class="view" id="v-r-schorsing"></section>
     <section class="view" id="v-r-week"></section>
     <section class="view" id="v-r-maand"></section>
     <section class="view" id="v-r-top"></section>
@@ -284,7 +291,7 @@ const LEVELS = { 1: '1e Afdeling / D1 (ex-1e Nationale)', 2: '2e Afdeling / D2',
 const LV_SHORT = { 1: '1e Afd. / D1', 2: '2e Afd. / D2', 3: '3e Afd. / D3', 4: '1e Prov.', 5: '2e Prov.', 6: '3e Prov.', 7: '4e Prov.' };
 const PROV_VV = { Antw: 'Antwerpen', 'Vl Brab': 'Vlaams-Brabant', Limb: 'Limburg', Ovl: 'Oost-Vlaanderen', Wvl: 'West-Vlaanderen' };
 const PROV_FFA = { Hainaut: 'Henegouwen', Liege: 'Luik', Namur: 'Namen', Luxembourg: 'Luxemburg', 'Brabant Wallon/Bruxelles': 'Waals-Brabant/Brussel' };
-const RVIEWS = { 'r-ploeg': 'Mijn ploeg', 'r-uitslagen': 'Uitslagen', 'r-week': 'Spelers van de week', 'r-maand': 'Spelers van de maand', 'r-top': 'Topscorers reeks', 'r-kaarten': 'Kaarten', 'r-minuten': 'Meeste minuten', 'r-klassement': 'Klassement' };
+const RVIEWS = { 'r-ploeg': 'Mijn ploeg', 'r-uitslagen': 'Uitslagen', 'r-week': 'Spelers van de week', 'r-maand': 'Spelers van de maand', 'r-top': 'Topscorers reeks', 'r-kaarten': 'Kaarten', 'r-schorsing': 'Schorsingen', 'r-minuten': 'Meeste minuten', 'r-klassement': 'Klassement' };
 const MAX_CACHED = 12;
 const MONTHS = ['januari', 'februari', 'maart', 'april', 'mei', 'juni', 'juli', 'augustus', 'september', 'oktober', 'november', 'december'];
 const MON_S = ['jan.', 'feb.', 'mrt.', 'apr.', 'mei', 'jun.', 'jul.', 'aug.', 'sep.', 'okt.', 'nov.', 'dec.'];
@@ -394,7 +401,7 @@ function renderTop() {
 }
 
 /* ---------- REEKS (live) ---------- */
-const S = { sid: null, name: '', teams: [], ranking: [], players: [], list: [], matches: 0, team: null, sort: { k: 'g', d: -1 }, series: [], started: false, wper: null, mper: null, uper: null, cal: [] };
+const S = { sid: null, name: '', teams: [], ranking: [], players: [], list: [], matches: 0, team: null, sort: { k: 'g', d: -1 }, series: [], started: false, wper: null, mper: null, uper: null, cal: [], umode: 'week', open: new Set(), byId: new Map(), sOnlyMine: false };
 function monday(dateStr) {
   const [y, mo, d] = String(dateStr).slice(0, 10).split('-').map(Number);
   const dt = new Date(Date.UTC(y, mo - 1, d)), wd = (dt.getUTCDay() + 6) % 7;
@@ -523,7 +530,7 @@ async function load(sid, force, teamId) {
     }
     remember(sid); store.set(key, cache);
     const list = fin.map(m => cache[m.id]).filter(Boolean);
-    S.matches = list.length; S.list = list; S.cal = cal.seriesCalendar || []; S.wper = S.mper = S.uper = null; S.players = aggregate(list); S.tname = id => tmap.get(String(id)) || '—';
+    S.matches = list.length; S.list = list; S.byId = new Map(list.map(m => [String(m.id), m])); S.open = new Set(); S.cal = cal.seriesCalendar || []; S.wper = S.mper = S.uper = null; S.players = aggregate(list); S.tname = id => tmap.get(String(id)) || '—';
     const saved = store.get('rs-team-' + sid);
     S.team = String([saved, DEFAULT_TEAM, S.ranking[0] && S.ranking[0].teamId].find(id => id && tmap.has(String(id))) || (S.teams[0] && S.teams[0].id));
     $('#team').innerHTML = S.teams.map(t => `<option value="${esc(t.id)}">${esc(t.name)}</option>`).join('');
@@ -608,23 +615,102 @@ function renderRPer(kind) {
     <h3 style="margin:8px 0 10px">Alle doelpuntenmakers · ${esc(lbl)}</h3>
     <ol class="list">${list.map(r => `<li${r.t === S.team ? ' style="background:var(--or-soft)"' : ''}><span class="pos">${rk(r)}</span><span class="who"><b>${esc(r.n)}</b><span>${esc(S.tname(r.t))}</span></span><span class="gpill">${BALL}${r.g}</span></li>`).join('')}</ol>`);
 }
-function renderUitslagen() {
-  const weeks = new Map();
-  for (const m of S.cal) { if (!m.startTime) continue; const k = monday(m.startTime); if (!weeks.has(k)) weeks.set(k, []); weeks.get(k).push(m); }
-  const keys = [...weeks.keys()].sort();
-  if (!keys.length) { $('#v-r-uitslagen').innerHTML = empty('Geen matchen gevonden.'); return; }
-  if (!S.uper || !weeks.has(S.uper)) { const last = lastWeekKey(); const done = keys.filter(k => k <= last && weeks.get(k).some(m => m.state === 'finished')); S.uper = done.length ? done[done.length - 1] : keys[0]; }
-  const i = keys.indexOf(S.uper), list = weeks.get(S.uper).slice().sort((a, b) => a.startTime.localeCompare(b.startTime));
-  const DAYS = ['zondag', 'maandag', 'dinsdag', 'woensdag', 'donderdag', 'vrijdag', 'zaterdag'];
+const DAYS = ['zondag', 'maandag', 'dinsdag', 'woensdag', 'donderdag', 'vrijdag', 'zaterdag'];
+const isMine = m => [m.homeTeam && m.homeTeam.id, m.awayTeam && m.awayTeam.id].map(String).includes(S.team);
+function refName(m) { // eerste aangeduide official = scheidsrechter
+  const o = (m.officials || []).find(x => x && x.personAssigned && (x.lastName || x.firstName));
+  return o ? `${o.firstName || ''} ${o.lastName || ''}`.trim() : '';
+}
+function matchDetails(m) {
+  const c = S.byId.get(String(m.id));
+  if (!c) return '<div class="det note">Geen wedstrijdblad beschikbaar.</div>';
+  const ev = [];
+  for (const pl of c.p) for (const [t, mi] of pl.e) {
+    const icon = { goal: '⚽', penalty: '⚽ (pen.)', owngoal: '⚽ (e.d.)', yellow: '<span class="card cy"></span>', yellowred: '<span class="card cy"></span><span class="card cr"></span>', red: '<span class="card cr"></span>' }[t];
+    if (icon) ev.push({ mi: +mi || 0, home: pl.t === String(m.homeTeam.id), txt: `${mi != null ? esc(mi) + "' " : ''}${icon} ${esc(pl.n)}` });
+  }
+  ev.sort((a, b) => a.mi - b.mi);
+  const ref = (m.officials || []).filter(x => x && x.personAssigned && x.lastName).map(x => `${x.firstName || ''} ${x.lastName}`.trim());
+  return `<div class="det"><div class="evs">${ev.map(e => `<div class="${e.home ? 'eh' : 'ea'}">${e.txt}</div>`).join('') || '<div class="note">Geen goals of kaarten.</div>'}</div>
+    ${ref.length ? `<div class="note">Scheidsrechter: ${esc(ref[0])}${ref.length > 1 ? ' · assistenten: ' + esc(ref.slice(1).join(', ')) : ''}</div>` : ''}</div>`;
+}
+function matchRow(m) {
+  const o = m.outcome || {}, fin = m.state === 'finished' && o.homeTeamGoals != null, ref = refName(m), open = S.open.has(String(m.id));
+  return `<li class="res${fin ? ' click' : ''}" data-mid="${esc(m.id)}"${isMine(m) ? ' style="background:var(--or-soft)"' : ''}${fin ? ` role="button" tabindex="0" aria-expanded="${open}"` : ''}>
+    <span class="t h">${esc(m.homeTeam && m.homeTeam.name)}</span><span class="sc">${fin ? `${esc(o.homeTeamGoals)} - ${esc(o.awayTeamGoals)}` : esc(m.startTime.slice(11, 16))}</span><span class="t">${esc(m.awayTeam && m.awayTeam.name)}</span>
+    <span class="meta">${ref ? 'Scheidsrechter: ' + esc(ref) : 'Scheidsrechter nog niet aangeduid'}${fin ? ' · klik voor goals en kaarten' : ''}</span>${open ? matchDetails(m) : ''}</li>`;
+}
+function dayList(list) {
   let lastDay = '', html = '';
   for (const m of list) {
     const day = m.startTime.slice(0, 10);
-    if (day !== lastDay) { const [y, mo, d] = day.split('-').map(Number); html += `${lastDay ? '</ol>' : ''}<h3 style="margin:18px 0 8px">${DAYS[new Date(Date.UTC(y, mo - 1, d)).getUTCDay()]} ${d} ${MONTHS[mo - 1]}</h3><ol class="list">`; lastDay = day; }
-    const o = m.outcome || {}, fin = m.state === 'finished' && o.homeTeamGoals != null;
-    const mine = [m.homeTeam && m.homeTeam.id, m.awayTeam && m.awayTeam.id].map(String).includes(S.team);
-    html += `<li class="res"${mine ? ' style="background:var(--or-soft)"' : ''}><span class="t h">${esc(m.homeTeam && m.homeTeam.name)}</span><span class="sc">${fin ? `${esc(o.homeTeamGoals)} - ${esc(o.awayTeamGoals)}` : esc(m.startTime.slice(11, 16))}</span><span class="t">${esc(m.awayTeam && m.awayTeam.name)}</span></li>`;
+    if (day !== lastDay) { const [y, mo, d] = day.split('-').map(Number); html += `${lastDay ? '</ol>' : ''}<h3 style="margin:18px 0 8px">${DAYS[new Date(Date.UTC(y, mo - 1, d)).getUTCDay()]} ${d} ${MONTHS[mo - 1]} ${y}</h3><ol class="list">`; lastDay = day; }
+    html += matchRow(m);
   }
-  $('#v-r-uitslagen').innerHTML = `<div class="head"><p class="note">Uitslagen en komende matchen per week.</p><div class="stepper"><button type="button" data-us="-1" ${i <= 0 ? 'disabled' : ''} aria-label="Vorige week">‹</button><span>${esc(weekLbl(S.uper))}</span><button type="button" data-us="1" ${i >= keys.length - 1 ? 'disabled' : ''} aria-label="Volgende week">›</button></div></div>` + html + '</ol>';
+  return html + (lastDay ? '</ol>' : '');
+}
+function renderUitslagen() {
+  const all = S.cal.filter(m => m.startTime).slice().sort((a, b) => a.startTime.localeCompare(b.startTime));
+  const seg = `<div class="tools">${[['week', 'Per week'], ['alles', 'Alle matchen'], ['ploeg', 'Matchen van ' + (S.tname ? S.tname(S.team) : 'mijn ploeg')]].map(([k, l]) => `<button class="chip" type="button" data-um="${k}" aria-pressed="${S.umode === k}">${esc(l)}</button>`).join('')}</div>`;
+  if (!all.length) { $('#v-r-uitslagen').innerHTML = seg + empty('Geen matchen gevonden.'); return; }
+  if (S.umode === 'alles') { $('#v-r-uitslagen').innerHTML = seg + `<p class="note">Alle ${all.length} matchen van de competitie, met uitslag of aftrapuur en scheidsrechter.</p>` + dayList(all); return; }
+  if (S.umode === 'ploeg') { const mine = all.filter(isMine); $('#v-r-uitslagen').innerHTML = seg + (mine.length ? dayList(mine) : empty('Geen matchen voor deze ploeg.')); return; }
+  const weeks = new Map();
+  for (const m of all) { const k = monday(m.startTime); if (!weeks.has(k)) weeks.set(k, []); weeks.get(k).push(m); }
+  const keys = [...weeks.keys()].sort();
+  if (!S.uper || !weeks.has(S.uper)) { const last = lastWeekKey(); const done = keys.filter(k => k <= last && weeks.get(k).some(m => m.state === 'finished')); S.uper = done.length ? done[done.length - 1] : keys[0]; }
+  const i = keys.indexOf(S.uper);
+  $('#v-r-uitslagen').innerHTML = seg + `<div class="head"><p class="note">Uitslagen en komende matchen per week.</p><div class="stepper"><button type="button" data-us="-1" ${i <= 0 ? 'disabled' : ''} aria-label="Vorige week">‹</button><span>${esc(weekLbl(S.uper))}</span><button type="button" data-us="1" ${i >= keys.length - 1 ? 'disabled' : ''} aria-label="Volgende week">›</button></div></div>` + dayList(weeks.get(S.uper));
+}
+
+// Schorsingen: berekend uit de wedstrijdbladen van deze reeks (competitie).
+function suspensions(limit) {
+  const fin = S.cal.filter(m => m.state === 'finished' && m.startTime).slice().sort((a, b) => a.startTime.localeCompare(b.startTime));
+  const teamMatches = new Map();
+  for (const m of S.cal.filter(x => x.startTime).slice().sort((a, b) => a.startTime.localeCompare(b.startTime)))
+    [m.homeTeam, m.awayTeam].forEach(t => { if (!t) return; const k = String(t.id); if (!teamMatches.has(k)) teamMatches.set(k, []); teamMatches.get(k).push(m); });
+  const P = new Map(), list = [];
+  const playedIn = (m, pl) => { const c = S.byId.get(String(m.id)); return !!(c && c.p.some(p => p.t === pl.t && p.n.toLowerCase() === pl.n.toLowerCase() && (p.s || p.e.some(e => e[0] === 'in')))); };
+  for (const m of fin) {
+    const c = S.byId.get(String(m.id)); if (!c) continue;
+    for (const pl of c.p) {
+      if (!pl.n) continue;
+      const types = pl.e.map(e => e[0]), yr = types.includes('yellowred'), red = types.includes('red');
+      const k = pl.t + '|' + pl.n.toLowerCase(), r = P.get(k) || { n: pl.n, t: pl.t, y: 0 };
+      P.set(k, r);
+      const why = [];
+      if (!yr) for (const t of types) if (t === 'yellow') { r.y++; if (r.y % limit === 0) why.push(`${r.y}e gele kaart`); } // geel in een 2×-geel-match telt niet mee
+      if (yr) why.push('2× geel (rood)');
+      if (red) why.push('rode kaart');
+      if (!why.length) continue;
+      const tm = teamMatches.get(pl.t) || [], next = tm[tm.findIndex(x => x.id === m.id) + 1];
+      let status = 'open';
+      if (next && next.state === 'finished') status = playedIn(next, pl) ? 'speelde' : 'uitgezeten';
+      list.push({ n: pl.n, t: pl.t, why: why.join(' + '), red, m, next, status });
+    }
+  }
+  const openKeys = new Set(list.filter(x => x.status === 'open').map(x => x.t + '|' + x.n.toLowerCase()));
+  const danger = [...P.values()].filter(r => r.y % limit === limit - 1 && !openKeys.has(r.t + '|' + r.n.toLowerCase()));
+  return { list, danger };
+}
+function renderSchorsing() {
+  let limit = 3; try { limit = +localStorage.getItem('rs-limit') || 3; } catch (e) { /* standaard */ }
+  const { list, danger } = suspensions(limit);
+  const only = r => !S.sOnlyMine || r.t === S.team;
+  const vs = (m, t) => { if (!m) return 'volgende match nog niet gekend'; const home = String(m.homeTeam.id) === t, opp = home ? m.awayTeam : m.homeTeam, [y, mo, d] = m.startTime.slice(0, 10).split('-').map(Number);
+    return `${DAYS[new Date(Date.UTC(y, mo - 1, d)).getUTCDay()].slice(0, 2)} ${d} ${MON_S[mo - 1]} ${home ? 'tegen' : 'op'} ${esc(opp && opp.name)}`; };
+  const open = list.filter(x => x.status === 'open').filter(only), past = list.filter(x => x.status !== 'open').filter(only).reverse(), dg = danger.filter(only);
+  const row = (x, extra) => `<li${x.t === S.team ? ' style="background:var(--or-soft)"' : ''}><span class="pos">${x.red ? '<span class="card cr"></span>' : '<span class="card cy"></span>'}</span><span class="who"><b>${esc(x.n)}</b><span>${esc(S.tname(x.t))} · ${esc(x.why)}</span></span><span class="note" style="text-align:right">${extra}</span></li>`;
+  $('#v-r-schorsing').innerHTML = `<div class="tools">
+      <label class="note">Schorsing na <select id="limit">${[3, 4, 5].map(n => `<option${n === limit ? ' selected' : ''}>${n}</option>`).join('')}</select> gele kaarten</label>
+      <button class="chip" type="button" id="onlyMine" aria-pressed="${S.sOnlyMine}">Alleen ${esc(S.tname(S.team))}</button></div>
+    <p class="note">Verwachte schorsingen volgens deze regel: elke ${limit}e gele kaart of een rode kaart = de volgende match niet spelen. Na een rode kaart beslist de bond vaak over meer matchen. Het officiële reglement kan anders zijn. Kijk naar "Eerdere schorsingen": speelde iemand toch mee, dan klopt de regel waarschijnlijk niet.</p>
+    <h3 style="margin:18px 0 8px">Geschorst voor de volgende match (${open.length})</h3>
+    ${open.length ? `<ol class="list">${open.map(x => row(x, 'mist: ' + vs(x.next, x.t))).join('')}</ol>` : empty('Niemand geschorst.')}
+    <h3 style="margin:22px 0 8px">Nog 1 gele kaart tot schorsing (${dg.length})</h3>
+    ${dg.length ? `<ol class="list">${dg.map(r => row({ ...r, why: r.y + ' gele kaarten', red: false }, '')).join('')}</ol>` : empty('Niemand.')}
+    <h3 style="margin:22px 0 8px">Eerdere schorsingen (${past.length})</h3>
+    ${past.length ? `<ol class="list">${past.map(x => row(x, x.status === 'uitgezeten' ? 'uitgezeten: ' + vs(x.next, x.t) : 'speelde toch mee: ' + vs(x.next, x.t))).join('')}</ol>` : empty('Nog geen.')}`;
 }
 function renderRTop() {
   const rows = filt(S.players.filter(p => p.g > 0)).sort((a, b) => b.g - a.g || a.min - b.min).slice(0, 50);
@@ -664,10 +750,10 @@ function render() {
   document.querySelectorAll('#rtabs .chip').forEach(b => b.setAttribute('aria-pressed', b.dataset.go === r ? 'true' : 'false'));
   document.querySelectorAll('.view').forEach(s => s.classList.toggle('on', s.id === 'v-' + r));
   $('#vtitle').textContent = r === 'r-ploeg' && S.tname ? S.tname(S.team) : RVIEWS[r];
-  $('#q').hidden = ['r-klassement', 'r-week', 'r-maand', 'r-uitslagen'].includes(r);
+  $('#q').hidden = ['r-klassement', 'r-week', 'r-maand', 'r-uitslagen', 'r-schorsing'].includes(r);
   if (!S.tname) return;
   renderBoard();
-  ({ 'r-ploeg': renderPloeg, 'r-uitslagen': renderUitslagen, 'r-week': () => renderRPer('w'), 'r-maand': () => renderRPer('m'), 'r-top': renderRTop, 'r-kaarten': renderKaarten, 'r-minuten': renderMin, 'r-klassement': renderRank })[r]();
+  ({ 'r-ploeg': renderPloeg, 'r-uitslagen': renderUitslagen, 'r-schorsing': renderSchorsing, 'r-week': () => renderRPer('w'), 'r-maand': () => renderRPer('m'), 'r-top': renderRTop, 'r-kaarten': renderKaarten, 'r-minuten': renderMin, 'r-klassement': renderRank })[r]();
 }
 function go(h) { if (location.hash === '#' + h) render(); else location.hash = h; }
 function startReeks(sid, teamId) {
@@ -750,10 +836,16 @@ $('#v-r-ploeg').addEventListener('click', e => { const th = e.target.closest('th
   if (n) { S[prop] = n; renderRPer(kind); }
 }));
 $('#v-r-uitslagen').addEventListener('click', e => {
-  const st = e.target.closest('[data-us]'); if (!st) return;
-  const keys = [...new Set(S.cal.filter(m => m.startTime).map(m => monday(m.startTime)))].sort(), n = keys[keys.indexOf(S.uper) + +st.dataset.us];
-  if (n) { S.uper = n; renderUitslagen(); }
+  const um = e.target.closest('[data-um]'); if (um) { S.umode = um.dataset.um; renderUitslagen(); return; }
+  const st = e.target.closest('[data-us]');
+  if (st) { const keys = [...new Set(S.cal.filter(m => m.startTime).map(m => monday(m.startTime)))].sort(), n = keys[keys.indexOf(S.uper) + +st.dataset.us]; if (n) { S.uper = n; renderUitslagen(); } return; }
+  const li = e.target.closest('li.res.click'); if (!li) return;
+  const id = li.dataset.mid; if (S.open.has(id)) S.open.delete(id); else S.open.add(id);
+  renderUitslagen();
 });
+$('#v-r-uitslagen').addEventListener('keydown', e => { if ((e.key === 'Enter' || e.key === ' ') && e.target.matches('li.res.click')) { e.preventDefault(); e.target.click(); } });
+$('#v-r-schorsing').addEventListener('change', e => { if (e.target.id === 'limit') { try { localStorage.setItem('rs-limit', e.target.value); } catch (x) { /* niets */ } renderSchorsing(); } });
+$('#v-r-schorsing').addEventListener('click', e => { if (e.target.closest('#onlyMine')) { S.sOnlyMine = !S.sOnlyMine; renderSchorsing(); } });
 addEventListener('hashchange', render);
 
 renderBelgie();
