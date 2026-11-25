@@ -58,8 +58,11 @@ code{background:var(--line);padding:1px 6px;border-radius:6px}
 {
 const $ = s => document.querySelector(s);
 // eigenaar en repository uit het adres halen (bv. amer-gh.github.io/reeksstatus-/)
-const OWNER = (location.hostname.endsWith('.github.io') ? location.hostname.split('.')[0] : 'Amer-gh');
-const REPO = (location.hostname.endsWith('.github.io') && location.pathname.split('/')[1]) || 'reeksstatus-';
+const onPages = location.hostname.endsWith('.github.io');
+const OWNER = onPages ? location.hostname.split('.')[0] : 'Amer-gh';
+const seg = location.pathname.split('/')[1] || '';
+// projectsite: naam.github.io/repo/  ·  hoofdsite: naam.github.io/ (repo heet dan naam.github.io)
+const REPO = onPages ? (seg && !seg.endsWith('.html') ? seg : location.hostname) : 'reeksstatus-';
 $('#repoName').textContent = REPO;
 const KEY = 'reeksstats-token';
 try { const t = localStorage.getItem(KEY); if (t) $('#tok').value = t; } catch (e) { /* geen opslag */ }
