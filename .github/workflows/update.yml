@@ -42,4 +42,7 @@ jobs:
           git config user.name "reeksstats-bot"
           git config user.email "reeksstats-bot@users.noreply.github.com"
           git add data.js
-          git diff --cached --quiet || (git commit -m "Data bijgewerkt $(date -u +%F)" && git push)
+          git diff --cached --quiet && exit 0
+          git commit -m "Data bijgewerkt $(date -u +%F)"
+          git pull --rebase -X theirs origin main
+          git push
