@@ -5,14 +5,18 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Reeksstats bijwerken</title>
 <style>
-:root{color-scheme:light dark;--bg:light-dark(#f2f5f0,#0a100c);--card:light-dark(#fff,#121b15);--ink:light-dark(#0d1912,#e9f0eb);--mute:light-dark(#5b6a61,#93a59a);--line:light-dark(#e0e6df,#213027);--pitch:#0d4a2c;--or:#ff7a1a}
+:root{color-scheme:light dark;--bg:light-dark(#f2f5f0,#0a100c);--card:light-dark(#fff,#121b15);--ink:light-dark(#0d1912,#e9f0eb);--mute:light-dark(#5b6a61,#93a59a);--line:light-dark(#e0e6df,#213027);--or:#ff7a1a}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.55 system-ui,sans-serif}
 main{max-width:720px;margin:0 auto;padding:40px 20px}
-h1{font-size:36px;line-height:1.1;margin:0 0 8px}
+h1{font-size:36px;line-height:1.1;margin:0 0 8px}h2{font-size:22px;margin:0 0 8px}
 .card{background:var(--card);border-radius:18px;padding:22px;margin-top:20px;box-shadow:0 8px 24px rgba(0,0,0,.06)}
 ol{padding-left:20px}li{margin:6px 0}
+label{display:block;font-weight:600;margin:10px 0 4px}
+input[type=password]{width:100%;min-height:44px;font-size:16px;border-radius:10px;border:1px solid var(--line);padding:8px 12px;background:var(--bg);color:var(--ink)}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:12px}
 button,a.btn{display:inline-flex;align-items:center;min-height:48px;padding:10px 20px;border-radius:999px;border:0;background:var(--or);color:#1c0d00;font:600 17px system-ui,sans-serif;cursor:pointer;text-decoration:none}
+button.ghost{background:transparent;color:var(--ink);border:1px solid var(--line)}
 button:disabled{opacity:.5;cursor:default}
 .bar{height:10px;background:var(--line);border-radius:10px;overflow:hidden;margin:16px 0 8px}.bar i{display:block;height:100%;width:0;background:var(--or)}
 .mute{color:var(--mute);font-size:14px}
@@ -22,16 +26,28 @@ code{background:var(--line);padding:1px 6px;border-radius:6px}
 <body>
 <main>
   <h1>Reeksstats bijwerken</h1>
-  <p class="mute">Haalt alle nieuwe wedstrijdbladen op bij RBFA en maakt een nieuw <code>data.js</code> voor de België-pagina.</p>
+  <p class="mute">Haalt de nieuwe wedstrijdbladen op bij RBFA (vanuit jouw browser) en zet een nieuw <code>data.js</code> op GitHub. De site is 1 à 2 minuten later bijgewerkt.</p>
+
   <div class="card">
+    <h2>1. GitHub-sleutel (eenmalig)</h2>
     <ol>
-      <li>Open deze pagina via je website (niet als los bestand).</li>
-      <li>Klik op <b>Start</b> en laat het tabblad open staan.</li>
-      <li>Download <code>data.js</code> en vervang het oude bestand in je map.</li>
-      <li>Sleep de map opnieuw naar Netlify.</li>
+      <li>Open <a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener">github.com → nieuwe fine-grained token</a>.</li>
+      <li>Naam: <code>reeksstats</code>, vervaldatum naar keuze.</li>
+      <li>Repository access: <b>Only select repositories</b> → <code id="repoName">reeksstatus-</code>.</li>
+      <li>Permissions → Repository permissions → <b>Contents: Read and write</b>.</li>
+      <li>Klik <b>Generate token</b> en plak hem hieronder.</li>
     </ol>
-    <p class="mute">De eerste keer duurt het ongeveer 70 minuten (RBFA laat 200 verzoeken per minuut toe). Daarna onthoudt deze browser de oude matchen en duurt het enkele minuten.</p>
-    <button id="start" type="button">Start</button>
+    <label for="tok">GitHub-sleutel</label>
+    <input id="tok" type="password" autocomplete="off" placeholder="github_pat_…">
+    <div class="row"><label style="margin:0;font-weight:400"><input id="remember" type="checkbox" checked> Onthouden op deze computer</label>
+      <button class="ghost" id="forget" type="button">Vergeten</button></div>
+    <p class="mute">De sleutel blijft in deze browser en gaat alleen naar GitHub.</p>
+  </div>
+
+  <div class="card">
+    <h2>2. Bijwerken</h2>
+    <p class="mute">De eerste keer in deze browser duurt het ongeveer 70 minuten (RBFA laat 200 verzoeken per minuut toe). Daarna onthoudt de browser de oude matchen en duurt het enkele minuten. Laat dit tabblad open staan.</p>
+    <button id="start" type="button">Bijwerken en publiceren</button>
     <div class="bar"><i id="prog"></i></div>
     <p id="msg" role="status">Klaar om te starten.</p>
     <p id="dl" hidden><a class="btn" id="dla" download="data.js">data.js downloaden</a></p>
@@ -41,10 +57,37 @@ code{background:var(--line);padding:1px 6px;border-radius:6px}
 <script>
 {
 const $ = s => document.querySelector(s);
+// eigenaar en repository uit het adres halen (bv. amer-gh.github.io/reeksstatus-/)
+const OWNER = (location.hostname.endsWith('.github.io') ? location.hostname.split('.')[0] : 'Amer-gh');
+const REPO = (location.hostname.endsWith('.github.io') && location.pathname.split('/')[1]) || 'reeksstatus-';
+$('#repoName').textContent = REPO;
+const KEY = 'reeksstats-token';
+try { const t = localStorage.getItem(KEY); if (t) $('#tok').value = t; } catch (e) { /* geen opslag */ }
+$('#forget').addEventListener('click', () => { try { localStorage.removeItem(KEY); } catch (e) { /* niets */ } $('#tok').value = ''; });
+
 function openDb() {
   return new Promise((res, rej) => { const r = indexedDB.open('reeksstats', 1); r.onupgradeneeded = () => r.result.createObjectStore('m'); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); });
 }
+function toBase64(text) {
+  const bytes = new TextEncoder().encode(text);
+  let bin = '';
+  for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
+  return btoa(bin);
+}
+async function publish(token, text) {
+  const api = `https://api.github.com/repos/${OWNER}/${REPO}/contents/data.js`;
+  const head = { Authorization: 'Bearer ' + token, Accept: 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28' };
+  let sha;
+  const g = await fetch(api + '?ref=main', { headers: head });
+  if (g.status === 401 || g.status === 403) throw new Error('GitHub weigert de sleutel (controleer repository en Contents: Read and write)');
+  if (g.ok) sha = (await g.json()).sha;
+  const p = await fetch(api, { method: 'PUT', headers: head, body: JSON.stringify({ message: 'Data bijgewerkt ' + new Date().toISOString().slice(0, 10), content: toBase64(text), sha, branch: 'main' }) });
+  if (!p.ok) throw new Error('GitHub: HTTP ' + p.status + ' ' + (await p.text()).slice(0, 120));
+}
+
 $('#start').addEventListener('click', async () => {
+  const token = $('#tok').value.trim();
+  try { if (token && $('#remember').checked) localStorage.setItem(KEY, token); } catch (e) { /* niets */ }
   $('#start').disabled = true; $('#dl').hidden = true;
   const t0 = Date.now();
   let cache = null;
@@ -57,18 +100,26 @@ $('#start').addEventListener('click', async () => {
   } catch (e) { /* zonder geheugen gaat het ook, maar trager */ }
   try {
     const r = await Collector.collectAll({ concurrency: 4, cache, progress: i => {
-      const frac = i.phase === 'kalenders' ? 0.05 * i.seriesDone / Math.max(i.series, 1) : 0.05 + 0.95 * i.matchesDone / Math.max(i.matches, 1);
+      const frac = i.phase === 'kalenders' ? 0.05 * i.seriesDone / Math.max(i.series, 1) : 0.05 + 0.9 * i.matchesDone / Math.max(i.matches, 1);
       $('#prog').style.width = Math.round(frac * 100) + '%';
       const min = Math.round((Date.now() - t0) / 60000);
       $('#msg').textContent = i.phase === 'kalenders' ? `Kalenders: ${i.seriesDone} van ${i.series} reeksen…`
         : `Wedstrijdbladen: ${i.matchesDone} van ${i.matches}` + (i.cached ? ` (${i.cached} al bekend)` : '') + (i.failed ? `, ${i.failed} mislukt` : '') + ` · ${min} min bezig`;
     } });
     const data = Collector.build(r.series, r.matchesBySeries, { season: r.season });
-    const blob = new Blob(['window.REEKS_DATA = ' + JSON.stringify(data) + ';\n'], { type: 'text/javascript' });
-    $('#dla').href = URL.createObjectURL(blob);
+    if (!data.totals.matches) throw new Error('geen matchen gevonden, er wordt niets gepubliceerd');
+    const text = 'window.REEKS_DATA = ' + JSON.stringify(data) + ';\n';
+    $('#dla').href = URL.createObjectURL(new Blob([text], { type: 'text/javascript' }));
     $('#dl').hidden = false;
+    const sum = `${data.totals.matches} matchen, ${data.totals.goals} goals` + (r.failed ? `, ${r.failed} verzoeken mislukt` : '');
+    if (token) {
+      $('#msg').textContent = 'Publiceren op GitHub…';
+      await publish(token, text);
+      $('#msg').textContent = `Klaar en gepubliceerd: ${sum}. De site is binnen 1 à 2 minuten bijgewerkt.`;
+    } else {
+      $('#msg').textContent = `Klaar: ${sum}. Geen GitHub-sleutel ingevuld: download data.js en zet het zelf op GitHub.`;
+    }
     $('#prog').style.width = '100%';
-    $('#msg').textContent = `Klaar: ${data.totals.matches} matchen, ${data.totals.goals} goals` + (r.failed ? `. Let op: ${r.failed} verzoeken mislukt, probeer later nog eens.` : '.');
   } catch (e) {
     $('#msg').textContent = 'Fout: ' + e.message;
   }

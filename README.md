@@ -1,25 +1,26 @@
 # Reeksstats
 
 Voetbalstatistieken van 1e Afdeling/D1 tot 4e Provinciaal, met data van RBFA.
+Site: https://amer-gh.github.io/reeksstatus-/
 
 ## Bestanden
 
-- `index.html`: de website
-- `data.js`: de cijfers voor de België-pagina (wordt elke week vernieuwd)
+- `index.html`: de website (pagina België + pagina Reeksen)
+- `data.js`: de cijfers voor de België-pagina
 - `collector.js`: haalt de wedstrijdbladen op en rekent alles uit
-- `update.mjs` + `.github/workflows/update.yml`: automatisch bijwerken via GitHub
-- `update.html`: met de hand bijwerken in je browser (reserveplan)
+- `update.html`: vernieuwt `data.js` vanuit je browser en zet het op GitHub
+- `update.mjs`: hetzelfde voor op je eigen pc met Node (optioneel)
 
-## Automatisch elke zondag (GitHub, gratis)
+## Elke zondag bijwerken
 
-1. Maak een account op github.com en een nieuwe repository, bv. `reeksstats` (Public).
-2. Upload alle bestanden, ook de map `.github` (tip: GitHub Desktop of `git push`).
-3. Settings → Pages → Source: "Deploy from a branch", branch `main`, map `/ (root)` → Save.
-   Je site komt op `https://amer-gh.github.io/reeksstatus-/`.
-4. Tabblad Actions → "Reeksstats bijwerken" → **Run workflow** (de eerste keer duurt dat ongeveer 70 minuten).
-5. Daarna loopt het vanzelf: zondag rond 20-21u, maandagochtend en donderdagochtend. Een update duurt dan enkele minuten.
+RBFA blokkeert servers (zoals GitHub), dus het bijwerken gebeurt vanuit je eigen browser:
 
-De reekspagina's (mijn ploeg, uitslagen, week, maand, kaarten, minuten, klassement) halen hun cijfers altijd live bij RBFA.
+1. Open https://amer-gh.github.io/reeksstatus-/update.html
+2. De eerste keer: maak een GitHub-sleutel (uitleg staat op de pagina) en plak hem erin.
+3. Klik **Bijwerken en publiceren**. De eerste keer duurt dat ~70 minuten, daarna enkele minuten.
+4. De site is 1 à 2 minuten later bijgewerkt.
+
+De reekspagina's (mijn ploeg, uitslagen, topscorers, spelers van de week/maand, kaarten, minuten, klassement) halen hun cijfers altijd live bij RBFA.
 
 ## Regels
 
