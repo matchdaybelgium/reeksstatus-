@@ -1,0 +1,45 @@
+name: Reeksstats bijwerken
+
+on:
+  schedule:
+    - cron: '0 19 * * 0'   # zondag 20u (winter) / 21u (zomer) Belgische tijd
+    - cron: '0 6 * * 1'    # maandagochtend: laat ingevulde wedstrijdbladen
+    - cron: '0 6 * * 4'    # donderdag: inhaalmatchen, en het geheugen blijft bewaard
+  workflow_dispatch:       # met de hand starten via het tabblad Actions
+
+permissions:
+  contents: write
+
+concurrency:
+  group: reeksstats-update
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Geheugen van vorige keer terugzetten
+        uses: actions/cache/restore@v4
+        with:
+          path: cache
+          key: matches-${{ github.run_id }}
+          restore-keys: matches-
+      - name: Nieuwe wedstrijdbladen ophalen
+        run: node update.mjs
+      - name: Geheugen bewaren
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: cache
+          key: matches-${{ github.run_id }}
+      - name: data.js opslaan
+        run: |
+          git config user.name "reeksstats-bot"
+          git config user.email "reeksstats-bot@users.noreply.github.com"
+          git add data.js
+          git diff --cached --quiet || (git commit -m "Data bijgewerkt $(date -u +%F)" && git push)

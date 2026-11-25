@@ -1,0 +1,764 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Reeksstats</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=Barlow:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* VOICE: matchprogramma van de zondag: direct, trots, cijfers eerst
+   IDEA: het scorebord en het erepodium aan de rand van het veld
+   PICTURE: groen veld met krijtlijnen, podium met de drie topscorers van België
+   COLOUR and TYPE: grasgroen, krijtwit, oranje voor goals; Barlow Condensed + Barlow
+   LAYOUT: kopbalk met twee pagina's (België, Reeksen), podium, dan week, maand, 1 match, ranglijst */
+:root{color-scheme:light dark;
+--bg:light-dark(#f2f5f0,#0a100c);--card:light-dark(#ffffff,#121b15);--ink:light-dark(#0d1912,#e9f0eb);
+--mute:light-dark(#5b6a61,#93a59a);--line:light-dark(#e0e6df,#213027);--soft:light-dark(#f6f8f4,#0f1712);
+--pitch:light-dark(#0d4a2c,#0a2a1b);--pitch2:light-dark(#11583a,#0d3321);--chalk:#fff;
+--or:#ff7a1a;--or-ink:#1c0d00;--or-soft:light-dark(#fff0e3,#2b1a0c);
+--gold:#f3c63a;--silver:#cfd6db;--bronze:#d68d50;--sky:#9ad7ff;
+--shadow:0 1px 2px rgba(0,0,0,.06),0 8px 24px rgba(0,0,0,.06)}
+:root[data-theme=light]{color-scheme:light}:root[data-theme=dark]{color-scheme:dark}
+*{box-sizing:border-box;min-width:0}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.55 Barlow,system-ui,sans-serif;overflow-x:clip}
+h1,h2,h3,.num{font-family:"Barlow Condensed",Barlow,sans-serif}
+h1{font-size:clamp(34px,5.5vw,56px);line-height:1.02;margin:0;font-weight:800;text-wrap:balance}
+h2{font-size:clamp(28px,3.6vw,38px);line-height:1.05;margin:0;font-weight:800}
+h3{font-size:22px;margin:0;font-weight:700}
+a{color:inherit}
+.wrap{max-width:1240px;margin:0 auto}
+.band{padding:clamp(28px,4vw,56px) max(5vw,16px)}
+button,select,input{font:inherit;font-size:16px}
+:focus-visible{outline:3px solid var(--sky);outline-offset:2px}
+.note{color:var(--mute);font-size:14px}
+.ball{width:1em;height:1em;vertical-align:-.12em;flex:none}
+/* kopbalk */
+.top{position:sticky;top:0;z-index:30;background:var(--pitch);color:var(--chalk);box-shadow:0 2px 0 rgba(0,0,0,.15)}
+.top .wrap{display:flex;align-items:center;gap:14px;padding:10px max(5vw,16px);max-width:none}
+.logo{display:flex;align-items:center;gap:10px;font:800 24px/1 "Barlow Condensed",Barlow,sans-serif;letter-spacing:.2px;text-decoration:none;color:var(--chalk);margin-right:auto}
+.logo .flag{display:inline-flex;height:18px;border-radius:3px;overflow:hidden}.logo .flag i{width:6px}
+.navbtn{background:transparent;color:var(--chalk);border:0;border-radius:999px;padding:10px 16px;min-height:44px;font-weight:600;cursor:pointer}
+.navbtn[aria-current=page]{background:var(--chalk);color:var(--pitch)}
+.page{display:none}.page.on{display:block}
+/* hero */
+.hero{position:relative;background:repeating-linear-gradient(90deg,var(--pitch) 0 90px,var(--pitch2) 90px 180px);color:var(--chalk);overflow:hidden}
+.hero .lines{position:absolute;inset:auto -80px -40px auto;width:min(700px,95vw);opacity:.16;pointer-events:none}
+.hero .wrap{position:relative}
+.kick{margin:0 0 6px;font-size:15px;opacity:.85}
+.podium{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;align-items:end;margin-top:28px}
+.pod{background:rgba(0,0,0,.28);border:1px solid rgba(255,255,255,.16);border-radius:18px;padding:18px;display:grid;gap:4px;text-align:left}
+.pod.r1{order:2;padding-top:34px;background:rgba(0,0,0,.36)}.pod.r2{order:1}.pod.r3{order:3}
+.medal{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;font:800 22px/1 "Barlow Condensed",Barlow,sans-serif;color:#1b1405}
+.r1 .medal{background:var(--gold);width:48px;height:48px;font-size:26px}.r2 .medal{background:var(--silver)}.r3 .medal{background:var(--bronze)}
+.pod .nm{font:700 clamp(20px,2.4vw,28px)/1.1 "Barlow Condensed",Barlow,sans-serif;margin-top:8px}
+.pod .cl{font-weight:600}.pod .rk{font-size:14px;opacity:.8}
+.pod .g{display:flex;align-items:center;gap:8px;font:800 clamp(44px,6vw,72px)/1 "Barlow Condensed",Barlow,sans-serif;color:var(--or);margin-top:8px}
+.pod .g small{font:600 16px Barlow,sans-serif;color:var(--chalk);opacity:.85}
+.r1 .g{font-size:clamp(56px,7.5vw,92px)}
+.totals{display:flex;flex-wrap:wrap;gap:8px 28px;margin-top:24px;font-size:15px}
+.totals b{font:800 26px/1 "Barlow Condensed",Barlow,sans-serif;display:block}
+/* secties */
+.sub{position:sticky;top:64px;z-index:20;background:var(--bg);border-bottom:1px solid var(--line)}
+.sub .wrap{display:flex;gap:6px;padding:8px max(5vw,16px);max-width:none;overflow-x:auto}
+.chip{flex:none;border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:999px;padding:8px 14px;min-height:44px;font-weight:600;cursor:pointer}
+.chip[aria-pressed=true]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+section.blk{scroll-margin-top:130px}
+.head{display:flex;flex-wrap:wrap;align-items:end;justify-content:space-between;gap:12px;margin-bottom:18px}
+.head p{margin:4px 0 0}
+.stepper{display:flex;align-items:center;gap:8px}
+.stepper button{width:44px;height:44px;border-radius:50%;border:1px solid var(--line);background:var(--card);color:var(--ink);font-size:20px;cursor:pointer}
+.stepper button:disabled{opacity:.35;cursor:default}
+.stepper span{font-weight:700;min-width:12ch;text-align:center}
+.duo{display:grid;grid-template-columns:minmax(0,5fr) minmax(0,7fr);gap:18px}
+.star{background:var(--pitch);color:var(--chalk);border-radius:20px;padding:24px;display:grid;align-content:start;gap:6px;position:relative;overflow:hidden}
+.star .lbl{font-size:14px;opacity:.85}
+.star .nm{font:800 clamp(30px,4vw,44px)/1.02 "Barlow Condensed",Barlow,sans-serif}
+.star .g{display:flex;align-items:center;gap:10px;font:800 clamp(64px,9vw,110px)/1 "Barlow Condensed",Barlow,sans-serif;color:var(--or);margin:10px 0 4px}
+.star .g small{font:600 18px Barlow,sans-serif;color:var(--chalk)}
+.star .g .ball{width:.5em;height:.5em}.star{align-self:start}
+.pod .lnk,.star .lnk{text-decoration-color:rgba(255,255,255,.35)}
+.star .tie{font-size:14px;opacity:.85;margin-top:6px}
+.list{background:var(--card);border-radius:20px;box-shadow:var(--shadow);padding:6px 0;margin:0;list-style:none}
+.list li{display:grid;grid-template-columns:44px minmax(0,1fr) auto;gap:12px;align-items:center;padding:10px 16px;border-bottom:1px solid var(--line)}
+.list li:last-child{border-bottom:0}
+.pos{width:34px;height:34px;border-radius:50%;background:var(--soft);display:grid;place-items:center;font:800 18px/1 "Barlow Condensed",Barlow,sans-serif;color:var(--mute)}
+.who{display:grid}.who b{font-weight:700;line-height:1.25}.who span{font-size:14px;color:var(--mute);overflow-wrap:anywhere}
+.gpill{display:inline-flex;align-items:center;gap:6px;background:var(--or-soft);color:light-dark(#9a3d00,#ffb27a);border-radius:999px;padding:6px 12px;font:800 20px/1 "Barlow Condensed",Barlow,sans-serif;white-space:nowrap}
+.lnk{background:none;border:0;padding:0;color:inherit;font:inherit;text-align:left;cursor:pointer;text-decoration:underline;text-decoration-color:var(--line);text-underline-offset:3px}
+.lnk:hover{text-decoration-color:currentColor}
+.rgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,300px),1fr));gap:14px}
+.rcard{background:var(--card);border-radius:18px;box-shadow:var(--shadow);padding:14px 16px 6px}
+.rcard h3{font-size:20px;margin:0 0 6px}.rcard h3 .lnk{text-decoration:none}
+.rrow{display:grid;grid-template-columns:30px minmax(0,1fr) auto;gap:10px;align-items:center;padding:8px 0;border-top:1px solid var(--line)}
+.mini{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;font:800 16px/1 "Barlow Condensed",Barlow,sans-serif;color:#1b1405}
+.m1{background:var(--gold)}.m2{background:var(--silver)}.m3{background:var(--bronze)}
+.rcard .none{color:var(--mute);font-size:14px;padding:8px 0 10px;border-top:1px solid var(--line)}
+.rcard .extra{color:var(--mute);font-size:13px;padding:0 0 8px 40px}
+.big3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;align-items:end;margin-bottom:18px}
+.big3 .rcard{padding:18px;text-align:center}.big3 .mini{margin:0 auto 8px;width:44px;height:44px;font-size:24px}
+.big3 .rcard{grid-row:1}.big3 .p1{grid-column:2;padding-top:30px}.big3 .p2{grid-column:1}.big3 .p3{grid-column:3}
+.big3 .nm{font:700 22px/1.15 "Barlow Condensed",Barlow,sans-serif}
+.big3 .g{font:800 46px/1 "Barlow Condensed",Barlow,sans-serif;color:var(--or);margin-top:6px}
+@media(max-width:640px){.big3{grid-template-columns:minmax(0,1fr)}.big3 .rcard,.big3 .p1,.big3 .p2,.big3 .p3{grid-column:auto;grid-row:auto;padding-top:18px}}
+.list li.res{grid-template-columns:minmax(0,1fr) auto minmax(0,1fr)}
+.res .t{font-weight:600;overflow-wrap:anywhere}.res .h{text-align:right}
+.res .sc{font:800 22px/1 "Barlow Condensed",Barlow,sans-serif;background:var(--soft);border-radius:8px;padding:6px 10px;min-width:64px;text-align:center;white-space:nowrap}
+.matches{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,340px),1fr));gap:14px}
+.mcard{background:var(--card);border-radius:18px;box-shadow:var(--shadow);padding:16px;display:grid;grid-template-columns:auto minmax(0,1fr);gap:14px;align-items:center}
+.mcard .big{font:800 54px/1 "Barlow Condensed",Barlow,sans-serif;color:var(--or);text-align:center;min-width:56px}
+.mcard .big small{display:block;font:600 13px Barlow,sans-serif;color:var(--mute)}
+.mcard .who span{display:block}
+.tools{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:14px}
+.tools input{flex:1 1 220px;max-width:360px;min-height:44px;border-radius:12px;border:1px solid var(--line);background:var(--card);color:var(--ink);padding:8px 12px}
+table{width:100%;border-collapse:collapse;background:var(--card);border-radius:18px;overflow:hidden;box-shadow:var(--shadow)}
+th,td{padding:11px 12px;border-bottom:1px solid var(--line);text-align:left;white-space:nowrap}
+tbody tr:last-child td{border-bottom:0}
+th{font-size:14px;color:var(--mute);font-weight:600;background:var(--soft)}
+th[data-k]{cursor:pointer;user-select:none}th.on::after{content:" ▾"}
+td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}
+td.name{white-space:normal;font-weight:700}
+td.rkc{font:800 18px "Barlow Condensed",Barlow,sans-serif;color:var(--mute);width:3em}
+tr.mine td{background:var(--or-soft)}
+.more{display:block;margin:14px auto 0;border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:999px;padding:10px 18px;min-height:44px;font-weight:600;cursor:pointer}
+.hide-l{display:none}
+.empty{padding:28px;text-align:center;color:var(--mute);background:var(--card);border-radius:18px}
+.card{display:inline-block;width:10px;height:14px;border-radius:2px;vertical-align:-2px;margin-right:4px}.cy{background:#f5c400}.cr{background:#e0262b}
+/* reeks-pagina */
+.controls{display:flex;flex-wrap:wrap;gap:10px;align-items:end;margin-top:20px}
+.controls label{display:grid;gap:4px;font-size:14px}
+.controls select,.controls input{min-height:44px;border-radius:12px;border:0;padding:8px 12px;background:var(--card);color:var(--ink)}
+.find{position:relative;display:grid;gap:4px;font-size:14px;flex:1 1 280px;max-width:420px}
+.results{position:absolute;top:100%;left:0;right:0;z-index:40;margin-top:6px;background:var(--card);color:var(--ink);border-radius:14px;box-shadow:0 12px 32px rgba(0,0,0,.35);max-height:360px;overflow-y:auto;padding:6px}
+.results h4{font-size:13px;color:var(--mute);margin:8px 10px 4px;font-weight:600}
+.results button{display:block;width:100%;text-align:left;background:transparent;color:var(--ink);border:0;border-radius:8px;padding:10px;min-height:44px;cursor:pointer}
+.results button:hover,.results button:focus-visible{background:var(--or-soft)}
+.results small{color:var(--mute)}.results p{margin:10px;color:var(--mute)}
+.board{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr));gap:14px;margin-top:22px}
+.tile{background:rgba(0,0,0,.28);border:1px solid rgba(255,255,255,.16);border-radius:18px;padding:16px 18px}
+.tile .lbl{font-size:14px;opacity:.85}.tile .big{font:800 clamp(40px,6vw,60px)/1 "Barlow Condensed",Barlow,sans-serif;color:var(--or);margin:6px 0 4px}
+.tile .w{font-size:18px;font-weight:700}.tile .s{font-size:14px;opacity:.8}
+.status{margin-top:14px;font-size:14px;min-height:22px}
+.bar{height:6px;background:rgba(255,255,255,.2);border-radius:6px;overflow:hidden;margin-top:6px;visibility:hidden}.bar i{display:block;height:100%;width:0;background:var(--or);transition:width .2s}
+.view{display:none}.view.on{display:block}
+.grid2{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr);gap:18px}
+footer{color:var(--mute);font-size:14px}
+pre,.scroll{overflow-x:auto}html{scroll-padding-top:130px}
+@media(max-width:900px){.duo,.grid2{grid-template-columns:minmax(0,1fr)}}
+@media(max-width:640px){.podium{grid-template-columns:minmax(0,1fr);gap:10px}.pod.r1,.pod.r2,.pod.r3{order:0;padding:14px}
+  .pod{grid-template-columns:auto minmax(0,1fr) auto;grid-template-areas:"m n g" "m c g" "m r g";column-gap:12px;row-gap:0;align-items:center}
+  .pod .medal{grid-area:m}.pod .nm{grid-area:n;margin:0;font-size:22px}.pod .cl{grid-area:c;font-size:14px}.pod .rk{grid-area:r}
+  .pod .g,.r1 .g{grid-area:g;margin:0;font-size:48px}.pod .g small{display:none}
+  .top .wrap{gap:4px}.logo{font-size:20px}.navbtn{padding:10px 12px}.sub{top:60px}
+  table{font-size:14px}th,td{padding:9px 8px}.hide-s{display:none}.hide-l{display:block!important}.hero .lines{display:none}}
+@media(prefers-reduced-motion:reduce){.bar i{transition:none}html{scroll-behavior:auto}}
+@media(prefers-reduced-motion:no-preference){html{scroll-behavior:smooth}}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="ball" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10.5" fill="#fff" stroke="currentColor" stroke-width="1.5"/><path d="M12 7.2l3.3 2.4-1.3 3.9h-4l-1.3-3.9z" fill="currentColor"/><path d="M12 1.8v5.4M15.3 9.6l5-1.6M14 13.5l3 4.2M10 13.5l-3 4.2M8.7 9.6l-5-1.6" stroke="currentColor" stroke-width="1.3" fill="none"/></symbol>
+</svg>
+
+<header class="top">
+  <div class="wrap">
+    <a class="logo" href="#belgie"><span class="flag" aria-hidden="true"><i style="background:#111"></i><i style="background:#f7d117"></i><i style="background:#e2231a"></i></span>Reeksstats</a>
+    <button class="navbtn" data-go="belgie" type="button">België</button>
+    <button class="navbtn" data-go="r-ploeg" type="button">Reeksen</button>
+  </div>
+</header>
+
+<!-- ============ BELGIË ============ -->
+<div class="page" id="p-belgie">
+  <section class="band hero">
+    <svg class="lines" viewBox="0 0 600 400" fill="none" stroke="#fff" stroke-width="4" aria-hidden="true">
+      <rect x="10" y="10" width="580" height="380"/><line x1="300" y1="10" x2="300" y2="390"/><circle cx="300" cy="200" r="70"/>
+      <rect x="10" y="90" width="110" height="220"/><rect x="480" y="90" width="110" height="220"/>
+    </svg>
+    <div class="wrap">
+      <p class="kick" id="b-kick">Belgisch amateurvoetbal</p>
+      <h1>Topscorers van België</h1>
+      <div class="podium" id="b-podium"></div>
+      <div class="totals" id="b-totals"></div>
+    </div>
+  </section>
+  <nav class="sub" aria-label="Onderdelen">
+    <div class="wrap">
+      <button class="chip" data-jump="s-per" type="button">Speler van de week en maand per reeks</button>
+      <button class="chip" data-jump="s-match" type="button">Meeste goals in 1 match</button>
+      <button class="chip" data-jump="s-top" type="button">Alle topscorers</button>
+    </div>
+  </nav>
+  <div class="band"><div class="wrap" style="display:grid;gap:clamp(40px,6vw,72px)">
+    <section class="blk" id="s-per">
+      <div class="head"><div><h2 id="p-title">Spelers van de week per reeks</h2><p class="note">Top 3 op aantal goals in elke reeks. Evenveel goals = gedeelde plaats. De week wisselt zondag om 22u, de maand op de 1e.</p></div>
+        <div class="stepper"><button type="button" id="p-prev" aria-label="Vorige periode">‹</button><span id="p-lbl"></span><button type="button" id="p-next" aria-label="Volgende periode">›</button></div></div>
+      <div class="tools"><button class="chip" type="button" data-kind="w" aria-pressed="true">Speler van de week</button><button class="chip" type="button" data-kind="m" aria-pressed="false">Speler van de maand</button></div>
+      <div class="tools" id="p-chips"></div>
+      <div class="rgrid" id="p-body"></div>
+    </section>
+    <section class="blk" id="s-match">
+      <div class="head"><div><h2>Meeste goals in 1 match</h2><p class="note">De grootste scoorbeurten van het seizoen.</p></div></div>
+      <div class="matches" id="x-body"></div>
+      <button class="more" type="button" id="x-more">Toon meer</button>
+    </section>
+    <section class="blk" id="s-top">
+      <div class="head"><div><h2>Alle topscorers</h2><p class="note">Filter per niveau of zoek een speler of club.</p></div></div>
+      <div class="tools" id="t-chips"></div>
+      <div class="tools"><input id="t-q" type="search" placeholder="Zoek speler of club" aria-label="Zoek speler of club"></div>
+      <div class="scroll" id="t-body"></div>
+      <button class="more" type="button" id="t-more">Toon meer</button>
+    </section>
+  </div></div>
+</div>
+
+<!-- ============ REEKSEN ============ -->
+<div class="page" id="p-reeks">
+  <section class="band hero">
+    <div class="wrap">
+      <p class="kick">Live van RBFA · elke reeks van 1e Afdeling tot 4e Provinciaal</p>
+      <h1 id="title">Kies een reeks</h1>
+      <div class="controls">
+        <div class="find">
+          <label for="find">Zoek reeks of club</label>
+          <input id="find" type="search" placeholder="bv. 3 Provinciaal Wvl of Boezinge" autocomplete="off">
+          <div class="results" id="results" hidden></div>
+        </div>
+        <label>Niveau<select id="niveau"><option>Laden…</option></select></label>
+        <label>Reeks<select id="reeks"></select></label>
+        <label>Mijn ploeg<select id="team"></select></label>
+      </div>
+      <div class="board" id="board"></div>
+      <div class="status" id="status" role="status"></div>
+      <div class="bar"><i id="prog"></i></div>
+    </div>
+  </section>
+  <nav class="sub" aria-label="Reeksonderdelen">
+    <div class="wrap" id="rtabs">
+      <button class="chip" data-go="r-ploeg" type="button">Mijn ploeg</button>
+      <button class="chip" data-go="r-uitslagen" type="button">Uitslagen</button>
+      <button class="chip" data-go="r-top" type="button">Topscorers</button>
+      <button class="chip" data-go="r-week" type="button">Spelers van de week</button>
+      <button class="chip" data-go="r-maand" type="button">Spelers van de maand</button>
+      <button class="chip" data-go="r-kaarten" type="button">Kaarten</button>
+      <button class="chip" data-go="r-minuten" type="button">Minuten</button>
+      <button class="chip" data-go="r-klassement" type="button">Klassement</button>
+    </div>
+  </nav>
+  <div class="band"><div class="wrap">
+    <div class="tools" style="justify-content:space-between"><h2 id="vtitle">Mijn ploeg</h2><input id="q" type="search" placeholder="Zoek speler of ploeg" aria-label="Zoek speler of ploeg"></div>
+    <section class="view" id="v-r-ploeg"></section>
+    <section class="view" id="v-r-uitslagen"></section>
+    <section class="view" id="v-r-week"></section>
+    <section class="view" id="v-r-maand"></section>
+    <section class="view" id="v-r-top"></section>
+    <section class="view" id="v-r-kaarten"></section>
+    <section class="view" id="v-r-minuten"></section>
+    <section class="view" id="v-r-klassement"></section>
+  </div></div>
+</div>
+
+<footer class="band"><div class="wrap">
+  <p>Data van <a href="https://www.rbfa.be">rbfa.be</a> (digitale wedstrijdbladen). België-overzichten: <span id="f-stamp">nog niet bijgewerkt</span>. Reeksen worden live opgehaald.</p>
+  <p>Goals = gewone goals + penaltygoals, eigen doelpunten tellen niet. Bij gelijke stand gaat het hoogste niveau voor, daarna minder speelminuten. Minuten worden berekend uit opstelling en wissels (90 min per match).</p>
+  <p><button class="more" style="margin:0" id="reload" type="button">Reeks opnieuw ophalen</button></p>
+</div></footer>
+
+<script src="data.js"></script>
+<script>
+{
+const API = 'https://www.rbfa.be/graphql';
+const H = {
+  sd: 'bd0d7fafc4d4fb181fbe2fd02cc9949041a392834d02d76a7b9a13a1a271251f',
+  rk: 'b138a3bac2675586dcbd76ae5d7e89287c69d4e319f66484be9ccca1e862395a',
+  cal: 'bf4ec6f8c53154da0406f98cd9d3562bfb856eee3db4345b589bf2c2a8ca9da9',
+  md: 'e4194e20528d04a046bd71ea20a044dbd445144b1104f5e6f5992cfdcf43a793',
+  search: 'ab24521d815f3fb7949955fbe2fbf29af563e12d761eb1f0f66a187cff539d53',
+  clubTeams: '79a7fb506ae28a8f7de7711dfa2dc37ac1cc8697798fe92b1ada0fffec2e6f22',
+  last: '93897f7b5497e607536dfd4f3fd39d5cb7e8dc1f76abac6e9ce41ad3cfdf6c91',
+  next: '7e0aa25b6dbe45cede5f1a16320b091be9078a7b9d8cb9cb1402fc35292696fb'
+};
+const DEFAULT_SID = 'CHP_136238', DEFAULT_TEAM = '364265';
+const LEVELS = { 1: '1e Afdeling / D1 (ex-1e Nationale)', 2: '2e Afdeling / D2', 3: '3e Afdeling / D3', 4: '1e Provinciaal', 5: '2e Provinciaal', 6: '3e Provinciaal', 7: '4e Provinciaal' };
+const LV_SHORT = { 1: '1e Afd. / D1', 2: '2e Afd. / D2', 3: '3e Afd. / D3', 4: '1e Prov.', 5: '2e Prov.', 6: '3e Prov.', 7: '4e Prov.' };
+const PROV_VV = { Antw: 'Antwerpen', 'Vl Brab': 'Vlaams-Brabant', Limb: 'Limburg', Ovl: 'Oost-Vlaanderen', Wvl: 'West-Vlaanderen' };
+const PROV_FFA = { Hainaut: 'Henegouwen', Liege: 'Luik', Namur: 'Namen', Luxembourg: 'Luxemburg', 'Brabant Wallon/Bruxelles': 'Waals-Brabant/Brussel' };
+const RVIEWS = { 'r-ploeg': 'Mijn ploeg', 'r-uitslagen': 'Uitslagen', 'r-week': 'Spelers van de week', 'r-maand': 'Spelers van de maand', 'r-top': 'Topscorers reeks', 'r-kaarten': 'Kaarten', 'r-minuten': 'Meeste minuten', 'r-klassement': 'Klassement' };
+const MAX_CACHED = 12;
+const MONTHS = ['januari', 'februari', 'maart', 'april', 'mei', 'juni', 'juli', 'augustus', 'september', 'oktober', 'november', 'december'];
+const MON_S = ['jan.', 'feb.', 'mrt.', 'apr.', 'mei', 'jun.', 'jul.', 'aug.', 'sep.', 'okt.', 'nov.', 'dec.'];
+
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const store = {
+  get(k) { try { return JSON.parse(localStorage.getItem(k)); } catch (e) { return null; } },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { /* vol */ } }
+};
+const BALL = '<svg class="ball" aria-hidden="true"><use href="#ball"/></svg>';
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+/* ---------- RBFA ---------- */
+async function gql(op, vars, hash) {
+  for (let attempt = 0; attempt < 6; attempt++) {
+    const r = await fetch(API, { method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ operationName: op, variables: vars, extensions: { persistedQuery: { version: 1, sha256Hash: hash } } }) });
+    if (r.status === 429) { setStatus('RBFA remt even af. Even geduld…', null); await sleep(15000); continue; }
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const j = await r.json();
+    if (j.errors && !j.data) {
+      const msg = j.errors[0].message || 'GraphQL-fout';
+      if (/too many/i.test(msg)) { setStatus('RBFA remt even af (max. 200 verzoeken per minuut). Even geduld…', null); await sleep(15000); continue; }
+      throw new Error(msg);
+    }
+    return j.data;
+  }
+  throw new Error('RBFA blokkeert te veel verzoeken, probeer binnen een minuut opnieuw');
+}
+function season() { const d = new Date(), y = d.getMonth() >= 6 ? d.getFullYear() : d.getFullYear() - 1; return [y + '/07/01', (y + 1) + '/06/30']; }
+
+/* ---------- BELGIË ---------- */
+const D = window.REEKS_DATA || null;
+const B = { kind: 'w', per: null, plvl: null, xShow: 12, tShow: 50, lvl: 0 };
+const sOf = i => (D && D.series[i]) || ['', '', 0, ''];
+const rel = (list, i, gIdx) => 1 + list.filter(r => r[gIdx] > list[i][gIdx]).length; // gedeelde plaats bij gelijke goals
+const plLink = (name, sIdx, tid) => `<button class="lnk" type="button" data-s="${esc(sIdx)}" data-t="${esc(tid)}">${esc(name)}</button>`;
+const fmtDate = d => { const [y, m, dd] = d.split('-').map(Number); return dd + ' ' + MON_S[m - 1]; };
+const weekLbl = mon => { const [y, m, d] = mon.split('-').map(Number); const a = new Date(Date.UTC(y, m - 1, d)), b = new Date(Date.UTC(y, m - 1, d + 6));
+  return a.getUTCDate() + (a.getUTCMonth() !== b.getUTCMonth() ? ' ' + MON_S[a.getUTCMonth()] : '') + ' – ' + b.getUTCDate() + ' ' + MON_S[b.getUTCMonth()]; };
+const monthLbl = k => { const [y, m] = k.split('-').map(Number); return MONTHS[m - 1] + ' ' + y; };
+
+function renderBelgie() {
+  if (!D) {
+    $('#b-podium').innerHTML = '<div class="pod" style="grid-column:1/-1"><div class="nm">Nog geen België-data</div><div class="rk">Het bestand data.js ontbreekt. Maak het aan met update.html en zet het naast deze pagina.</div></div>';
+    ['#p-body', '#x-body', '#t-body'].forEach(s => $(s).innerHTML = '<div class="empty">Nog geen data.</div>');
+    return;
+  }
+  const t = D.totals;
+  $('#b-kick').textContent = `Seizoen ${D.season} · ${t.series} reeksen van 1e Afdeling tot 4e Provinciaal`;
+  $('#b-podium').innerHTML = D.top.slice(0, 3).map((p, i) => { const s = sOf(p[3]);
+    return `<article class="pod r${i + 1}"><div class="medal">${i + 1}</div><div class="nm">${plLink(p[0], p[3], p[1])}</div><div class="cl">${esc(p[2])}</div><div class="rk">${esc(s[1])}</div>
+      <div class="g">${p[4]} <small>goals in ${p[6]} matchen</small></div></article>`; }).join('');
+  $('#b-totals').innerHTML = [[t.goals.toLocaleString('nl-BE'), 'goals'], [t.matches.toLocaleString('nl-BE'), 'matchen'], [t.scorers.toLocaleString('nl-BE'), 'verschillende doelpuntenmakers'], [t.hattricks.toLocaleString('nl-BE'), 'hattricks']]
+    .map(([v, l]) => `<div><b>${esc(v)}</b>${esc(l)}</div>`).join('');
+  $('#f-stamp').textContent = 'bijgewerkt op ' + new Date(D.generated).toLocaleString('nl-BE', { dateStyle: 'long', timeStyle: 'short' });
+  renderPer(); renderSingle(); renderChips(); renderTop();
+}
+function perKeys(kind) {
+  const cnt = new Map();
+  ((kind === 'w' ? D.rw : D.rm) || []).forEach(list => list.forEach(([k]) => cnt.set(k, (cnt.get(k) || 0) + 1)));
+  return [...cnt].sort((a, b) => b[0].localeCompare(a[0]));
+}
+function renderPer() {
+  const keys = perKeys(B.kind);
+  document.querySelectorAll('[data-kind]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.kind === B.kind)));
+  $('#p-title').textContent = B.kind === 'w' ? 'Spelers van de week per reeks' : 'Spelers van de maand per reeks';
+  const kl = closedKeys(keys.map(([k]) => k), B.kind); // afgesloten periodes: week wisselt zondag 22u, maand op de 1e
+  if (!B.per || !kl.includes(B.per)) B.per = kl[0];
+  const i = kl.indexOf(B.per);
+  $('#p-prev').disabled = i >= kl.length - 1; $('#p-next').disabled = i <= 0;
+  $('#p-lbl').textContent = B.kind === 'w' ? weekLbl(B.per) : monthLbl(B.per);
+  const lv = [...new Set(D.series.map(s => s[2]))].sort((a, b) => a - b);
+  if (B.plvl == null) { const mine = D.series.find(s => s[0] === (store.get('rs-sid') || DEFAULT_SID)); B.plvl = mine ? mine[2] : lv[0]; }
+  $('#p-chips').innerHTML = lv.map(l => `<button class="chip" type="button" data-plvl="${l}" aria-pressed="${B.plvl === l}">${esc(LV_SHORT[l])}</button>`).join('');
+  const arr = B.kind === 'w' ? D.rw : D.rm;
+  $('#p-body').innerHTML = D.series.map((s, si) => [s, si]).filter(([s]) => s[2] === B.plvl).map(([s, si]) => {
+    const hit = (arr[si] || []).find(([k]) => k === B.per), rows = hit ? hit[1] : [];
+    const body = !rows.length ? '<div class="none">Geen goals in deze periode (of niet gespeeld).</div>' :
+      rows.map(r => { const rk = 1 + rows.filter(x => x[3] > r[3]).length;
+        return `<div class="rrow"><span class="mini m${rk}">${rk}</span><span class="who"><b>${plLink(r[0], si, r[1])}</b><span>${esc(r[2])}</span></span><span class="gpill">${BALL}${r[3]}</span></div>`; }).join('') +
+      (hit[2] ? `<div class="extra">+ ${hit[2]} ${hit[2] === 1 ? 'andere speler' : 'andere spelers'} op een gedeelde plaats</div>` : '');
+    return `<article class="rcard"><h3><button class="lnk" type="button" data-sid="${esc(s[0])}">${esc(s[1])}</button></h3>${body}</article>`;
+  }).join('') || '<div class="empty">Geen reeksen op dit niveau.</div>';
+}
+function renderSingle() {
+  const rows = D.single.slice(0, B.xShow);
+  $('#x-body').innerHTML = rows.map(x => { const s = sOf(x[3]);
+    return `<article class="mcard"><div class="big">${x[9]}<small>goals</small></div><div class="who"><b>${plLink(x[0], x[3], x[1])}</b><span>${esc(x[2])} · ${esc(s[1])}</span><span>${esc(fmtDate(x[4]))} · ${esc(x[6] ? x[2] + ' ' + x[7] + '-' + x[8] + ' ' + x[5] : x[5] + ' ' + x[8] + '-' + x[7] + ' ' + x[2])}</span></div></article>`; }).join('');
+  $('#x-more').hidden = B.xShow >= D.single.length;
+}
+function renderChips() {
+  const lv = [...new Set(D.series.map(s => s[2]))].sort((a, b) => a - b);
+  $('#t-chips').innerHTML = [[0, 'Heel België'], ...lv.map(l => [l, LV_SHORT[l]])].map(([l, n]) => `<button class="chip" type="button" data-lvl="${l}" aria-pressed="${B.lvl === l}">${esc(n)}</button>`).join('');
+}
+function renderTop() {
+  const q = $('#t-q').value.trim().toLowerCase();
+  let rows = D.top.filter(p => !B.lvl || sOf(p[3])[2] === B.lvl);
+  const ranked = rows.map((p, i) => [p, rel(rows, i, 4)]);
+  const shown = ranked.filter(([p]) => !q || p[0].toLowerCase().includes(q) || p[2].toLowerCase().includes(q) || sOf(p[3])[1].toLowerCase().includes(q));
+  $('#t-body').innerHTML = !shown.length ? '<div class="empty">Geen spelers gevonden.</div>' :
+    `<table><thead><tr><th>#</th><th>Speler</th><th class="hide-s">Club</th><th>Reeks</th><th class="n">Goals</th><th class="n hide-s">Matchen</th><th class="n hide-s">Min/goal</th><th class="n hide-s">3+ goals</th></tr></thead><tbody>` +
+    shown.slice(0, B.tShow).map(([p, r]) => `<tr><td class="rkc">${r}</td><td class="name">${plLink(p[0], p[3], p[1])}<div class="note hide-l" style="font-weight:400">${esc(p[2])}</div></td><td class="hide-s">${esc(p[2])}</td><td>${esc(sOf(p[3])[1])}</td>
+      <td class="n"><b>${p[4]}</b>${p[5] ? ` <span class="note">(${p[5]} pen.)</span>` : ''}</td><td class="n hide-s">${p[6]}</td><td class="n hide-s">${Math.round(p[7] / p[4])}</td><td class="n hide-s">${p[8] || '–'}</td></tr>`).join('') + '</tbody></table>';
+  $('#t-more').hidden = B.tShow >= shown.length;
+}
+
+/* ---------- REEKS (live) ---------- */
+const S = { sid: null, name: '', teams: [], ranking: [], players: [], list: [], matches: 0, team: null, sort: { k: 'g', d: -1 }, series: [], started: false, wper: null, mper: null, uper: null, cal: [] };
+function monday(dateStr) {
+  const [y, mo, d] = String(dateStr).slice(0, 10).split('-').map(Number);
+  const dt = new Date(Date.UTC(y, mo - 1, d)), wd = (dt.getUTCDay() + 6) % 7;
+  dt.setUTCDate(dt.getUTCDate() - wd);
+  return dt.toISOString().slice(0, 10);
+}
+function compact(m) {
+  const p = [];
+  const add = (rows, starter) => (rows || []).forEach(pr => ['home', 'away'].forEach(side => {
+    const x = pr && pr[side]; if (!x) return;
+    const team = side === 'home' ? m.homeTeam : m.awayTeam;
+    p.push({ t: String(team.id), n: ((x.firstName || '') + ' ' + (x.lastName || '')).trim(), s: starter ? 1 : 0, e: (x.events || []).map(e => [e.type, e.minute]) });
+  }));
+  add(m.lineup, true); add(m.substitutes, false);
+  return { id: m.id, d: m.startTime, h: [String(m.homeTeam.id), m.homeTeam.name], a: [String(m.awayTeam.id), m.awayTeam.name], p };
+}
+function minutes(pl) {
+  let start = pl.s ? 0 : null, end = 90;
+  for (const [t, mi] of pl.e) {
+    const m = Math.min(Math.max(+mi || 0, 0), 90);
+    if (t === 'in') start = m;
+    if (t === 'out' || t === 'red' || t === 'yellowred') end = Math.min(end, m);
+  }
+  if (start === null) return null;
+  return Math.max(end - start, 1);
+}
+function aggregate(list) {
+  const P = new Map();
+  for (const m of list) for (const pl of m.p) {
+    if (!pl.n) continue;
+    const k = pl.t + '|' + pl.n.toLowerCase();
+    let r = P.get(k);
+    if (!r) { r = { t: pl.t, n: pl.n, mp: 0, bs: 0, min: 0, g: 0, pen: 0, og: 0, y: 0, yr: 0, r: 0 }; P.set(k, r); }
+    const mins = minutes(pl);
+    if (mins !== null) { r.mp++; r.min += mins; if (pl.s) r.bs++; }
+    for (const [t] of pl.e) {
+      if (t === 'goal') r.g++; else if (t === 'penalty') { r.g++; r.pen++; } else if (t === 'owngoal') r.og++;
+      else if (t === 'yellow') r.y++; else if (t === 'yellowred') r.yr++; else if (t === 'red') r.r++;
+    }
+  }
+  return [...P.values()];
+}
+function setStatus(txt, frac) {
+  $('#status').textContent = txt;
+  $('#prog').style.width = frac == null ? '0' : Math.round(frac * 100) + '%';
+  $('#prog').parentNode.style.visibility = frac == null ? 'hidden' : 'visible';
+}
+function parseSid(v) { const m = String(v || '').match(/(CHP|CUP)_\d+/i); return m ? m[0].toUpperCase() : null; }
+function classify(id, sn) {
+  if (!/^CHP_/.test(id) || !/^Voetbal\s*:/.test(sn)) return null;
+  const full = sn.replace(/^Voetbal\s*:\s*/, ''), i = full.indexOf(' - ');
+  if (i < 0) return null;
+  const reg = full.slice(0, i).trim(), rest = full.slice(i + 3).trim();
+  let m;
+  if (reg === 'Voetbal Vlaanderen' && (m = rest.match(/^(\d)(?:e|de|ste) Afdeling Voetb Vl(?: ([A-Z]))?$/))) return { id, lvl: +m[1], grp: 'Voetbal Vlaanderen', name: m[1] + 'e Afdeling' + (m[2] ? ' ' + m[2] : '') };
+  if (reg === 'FFA' && (m = rest.match(/^D([123]) FFA(?: série ([A-Z]))?$/i))) return { id, lvl: +m[1], grp: 'FFA (Wallonië)', name: 'D' + m[1] + (m[2] ? ' ' + m[2] : '') };
+  if (reg === 'Voetbal Vlaanderen' && (m = rest.match(/^([1-4]) Provinciaal (Antw|Vl Brab|Limb|Ovl|Wvl)(?: ([A-Z]))?$/))) return { id, lvl: 3 + +m[1], grp: PROV_VV[m[2]], name: m[1] + 'e Prov. ' + PROV_VV[m[2]] + (m[3] ? ' ' + m[3] : '') };
+  if (PROV_FFA[reg] && (m = rest.match(/^([1-4])\s*PROV(?:\.|INCIALE)?\s*([A-Z])?\.?$/i))) return { id, lvl: 3 + +m[1], grp: PROV_FFA[reg], name: m[1] + 'e Prov. ' + PROV_FFA[reg] + (m[2] ? ' ' + m[2].toUpperCase() : '') };
+  return null;
+}
+async function discoverSeries() {
+  if (D && D.series && D.series.length) return D.series.map(s => ({ id: s[0], name: s[1], lvl: s[2], grp: s[3] }));
+  const key = 'rs-series-' + season()[0], c = store.get(key);
+  if (c && c.list && c.list.length && Date.now() - c.at < 7 * 864e5) return c.list;
+  const page = (q, off) => gql('DoSearch', { first: 100, offset: off, filter: { query: q, type: 'competition' }, language: 'nl', channel: 'belgianfootball', location: 'BE' }, H.search).then(d => d.search || {});
+  const all = async q => { const f = await page(q, 0), tot = (f.pageInfo && f.pageInfo.total) || 0, rest = [];
+    for (let o = 100; o < tot && o < 1000; o += 100) rest.push(page(q, o));
+    return [f, ...(await Promise.all(rest))].flatMap(s => s.results || []); };
+  const seen = new Map();
+  (await Promise.all(['Afdeling', 'D1', 'D2', 'D3', 'Provinciaal', 'Prov', 'Hainaut', 'Liege', 'Namur', 'Luxembourg', 'Brabant Wallon'].map(q => all(q).catch(() => [])))).flat().forEach(r => seen.set(r.id, r.seriesName));
+  const list = [...seen].map(([id, sn]) => classify(id, sn)).filter(Boolean).sort((a, b) => a.lvl - b.lvl || a.grp.localeCompare(b.grp) || a.name.localeCompare(b.name));
+  if (list.length) store.set(key, { at: Date.now(), list });
+  return list;
+}
+function fillLevels() {
+  const lv = [...new Set(S.series.map(s => s.lvl))];
+  $('#niveau').innerHTML = lv.map(l => `<option value="${l}">${esc(LEVELS[l])}</option>`).join('') + '<option value="">Andere (via zoeken)</option>';
+}
+function fillReeks(lvl) {
+  const list = S.series.filter(s => String(s.lvl) === String(lvl)), groups = [...new Set(list.map(s => s.grp))];
+  $('#reeks').innerHTML = !list.length ? `<option value="">${esc(S.name || 'Gebruik het zoekveld')}</option>` :
+    '<option value="">Kies een reeks…</option>' + groups.map(g => `<optgroup label="${esc(g)}">` + list.filter(s => s.grp === g).map(s => `<option value="${esc(s.id)}">${esc(s.name)}</option>`).join('') + '</optgroup>').join('');
+}
+function syncPickers() {
+  const cur = S.series.find(s => s.id === S.sid);
+  $('#niveau').value = cur ? String(cur.lvl) : '';
+  fillReeks($('#niveau').value);
+  $('#reeks').value = cur ? cur.id : '';
+}
+function remember(sid) {
+  const order = (store.get('rs-cached') || []).filter(x => x !== sid); order.push(sid);
+  while (order.length > MAX_CACHED) { const old = order.shift(); try { localStorage.removeItem('rs-m2-' + old); localStorage.removeItem('rs-m-' + old); } catch (e) { /* niets */ } }
+  store.set('rs-cached', order);
+}
+async function load(sid, force, teamId) {
+  if (teamId) store.set('rs-team-' + sid, String(teamId));
+  S.sid = sid; store.set('rs-sid', sid);
+  $('#title').textContent = 'Reeks laden…';
+  setStatus('Reeks ophalen bij RBFA…', 0.02);
+  try {
+    const [sd, rk, cal] = await Promise.all([
+      gql('GetSeriesDetail', { seriesId: sid, language: 'nl' }, H.sd),
+      gql('GetSeriesRankings', { seriesId: sid, language: 'nl' }, H.rk),
+      gql('GetSeriesCalendar', { seriesId: sid, startDate: season()[0], endDate: season()[1], language: 'nl' }, H.cal)
+    ]);
+    if (S.sid !== sid) return;
+    S.name = (sd.series && sd.series.name) || sid;
+    const rankings = (rk.seriesRankings && rk.seriesRankings.rankings) || [];
+    const gen = rankings.find(r => r.type === 'generalRanking') || rankings[0];
+    S.ranking = gen ? gen.teams : [];
+    const fin = (cal.seriesCalendar || []).filter(m => m.state === 'finished');
+    const tmap = new Map(S.ranking.map(t => [String(t.teamId), t.name]));
+    (cal.seriesCalendar || []).forEach(m => [m.homeTeam, m.awayTeam].forEach(t => { if (t && !tmap.has(String(t.id))) tmap.set(String(t.id), t.name); }));
+    S.teams = [...tmap].map(([id, name]) => ({ id, name })).sort((a, b) => a.name.localeCompare(b.name));
+    const key = 'rs-m2-' + sid, cache = force ? {} : (store.get(key) || {});
+    const todo = fin.filter(m => !cache[m.id]);
+    let done = fin.length - todo.length, failed = 0;
+    const tick = () => setStatus(`Wedstrijdbladen: ${done} van ${fin.length}` + (failed ? ` (${failed} mislukt)` : ''), fin.length ? done / fin.length : 1);
+    tick();
+    for (let i = 0; i < todo.length; i += 4) {
+      await Promise.all(todo.slice(i, i + 4).map(async m => {
+        try { const d = (await gql('GetMatchDetail', { matchId: m.id, language: 'nl' }, H.md)).matchDetail; if (d) cache[m.id] = compact(d); } catch (e) { failed++; }
+        done++; tick();
+      }));
+      if (S.sid !== sid) return;
+    }
+    remember(sid); store.set(key, cache);
+    const list = fin.map(m => cache[m.id]).filter(Boolean);
+    S.matches = list.length; S.list = list; S.cal = cal.seriesCalendar || []; S.wper = S.mper = S.uper = null; S.players = aggregate(list); S.tname = id => tmap.get(String(id)) || '—';
+    const saved = store.get('rs-team-' + sid);
+    S.team = String([saved, DEFAULT_TEAM, S.ranking[0] && S.ranking[0].teamId].find(id => id && tmap.has(String(id))) || (S.teams[0] && S.teams[0].id));
+    $('#team').innerHTML = S.teams.map(t => `<option value="${esc(t.id)}">${esc(t.name)}</option>`).join('');
+    $('#team').value = S.team;
+    syncPickers();
+    $('#title').textContent = S.name;
+    setStatus(failed ? `${failed} wedstrijdbladen konden niet geladen worden. Probeer later opnieuw.` : `${S.matches} gespeelde matchen · live van RBFA`, null);
+    render();
+  } catch (e) {
+    $('#title').textContent = 'RBFA niet bereikbaar';
+    setStatus('Fout: ' + e.message + '. Open de site via internet (bv. Netlify) en niet als los bestand.', null);
+  }
+}
+function filt(rows) { const q = $('#q').value.trim().toLowerCase(); return q ? rows.filter(r => r.n.toLowerCase().includes(q) || S.tname(r.t).toLowerCase().includes(q)) : rows; }
+const goalsTxt = r => r.g + (r.pen ? ` <span class="note">(${r.pen} pen.)</span>` : '');
+const empty = t => `<div class="empty">${esc(t)}</div>`;
+const mineCls = r => String(r.t) === String(S.team) ? ' class="mine"' : '';
+function renderBoard() {
+  const top = [...S.players].sort((a, b) => b.g - a.g || a.min - b.min)[0];
+  const mine = S.players.filter(p => p.t === S.team), topMine = [...mine].sort((a, b) => b.g - a.g || a.min - b.min)[0];
+  const tile = (lbl, big, who, sub) => `<div class="tile"><div class="lbl">${esc(lbl)}</div><div class="big">${esc(big)}</div><div class="w">${esc(who)}</div><div class="s">${esc(sub)}</div></div>`;
+  $('#board').innerHTML = !S.players.length ? '' :
+    tile('Topscorer van de reeks', top && top.g ? top.g : 0, top && top.g ? top.n : 'Nog geen goals', top && top.g ? S.tname(top.t) : '') +
+    tile('Topscorer ' + S.tname(S.team), topMine && topMine.g ? topMine.g : 0, topMine && topMine.g ? topMine.n : 'Nog geen goals', topMine ? `${topMine.mp} matchen · ${topMine.min} min` : '') +
+    tile('Kaarten ' + S.tname(S.team), mine.reduce((s, p) => s + p.y + p.yr + p.r, 0), `${mine.reduce((s, p) => s + p.y, 0)} geel · ${mine.reduce((s, p) => s + p.yr + p.r, 0)} rood`, `${S.matches} matchen in de reeks`);
+}
+function renderPloeg() {
+  const cols = [['n', 'Speler'], ['mp', 'Matchen'], ['bs', 'Basis'], ['min', 'Minuten'], ['g', 'Goals'], ['y', 'Geel'], ['rr', 'Rood']];
+  const val = (r, k) => k === 'rr' ? r.yr + r.r : r[k], { k, d } = S.sort;
+  const rows = filt(S.players.filter(p => p.t === S.team && (p.mp || p.g || p.y || p.yr || p.r))).sort((a, b) => k === 'n' ? a.n.localeCompare(b.n) * -d : (val(a, k) - val(b, k)) * d || b.min - a.min);
+  $('#v-r-ploeg').innerHTML = !rows.length ? empty('Geen spelers gevonden voor deze ploeg.') :
+    `<div class="scroll"><table><thead><tr>${cols.map(([c, l]) => `<th data-k="${c}" class="${c === 'n' ? '' : 'n'}${c === k ? ' on' : ''}">${l}</th>`).join('')}</tr></thead><tbody>` +
+    rows.map(r => `<tr><td class="name">${esc(r.n)}</td><td class="n">${r.mp}</td><td class="n">${r.bs}</td><td class="n">${r.min}</td><td class="n">${goalsTxt(r)}</td><td class="n">${r.y ? '<span class="card cy"></span>' + r.y : '–'}</td><td class="n">${r.yr + r.r ? '<span class="card cr"></span>' + (r.yr + r.r) : '–'}</td></tr>`).join('') +
+    `</tbody></table></div><p class="note">Klik op een kolom om te sorteren. Rood = rechtstreeks rood + twee keer geel.</p>`;
+}
+// Speler van de week wisselt zondag om 22u, speler van de maand op de 1e van de maand.
+function ymd(dt) { return dt.getFullYear() + '-' + String(dt.getMonth() + 1).padStart(2, '0') + '-' + String(dt.getDate()).padStart(2, '0'); }
+function lastWeekKey(now) {
+  now = now || new Date();
+  const thisMon = monday(ymd(now));
+  const sundayEvening = now.getDay() === 0 && now.getHours() >= 22;
+  if (sundayEvening) return thisMon;
+  const [y, m, d] = thisMon.split('-').map(Number);
+  return new Date(Date.UTC(y, m - 1, d - 7)).toISOString().slice(0, 10);
+}
+function lastMonthKey(now) { now = now || new Date(); const d = new Date(now.getFullYear(), now.getMonth() - 1, 1); return ymd(d).slice(0, 7); }
+function closedKeys(keys, kind) { // afgesloten periodes, nieuwste eerst; de laatste afgesloten periode staat er altijd in
+  const last = kind === 'w' ? lastWeekKey() : lastMonthKey();
+  return [...new Set([last, ...keys.filter(k => k <= last)])].sort().reverse();
+}
+function livePeriods(kind) {
+  const map = new Map();
+  for (const m of S.list) {
+    if (!m.d) continue;
+    const k = kind === 'w' ? monday(m.d) : m.d.slice(0, 7);
+    for (const pl of m.p) {
+      const g = pl.e.filter(([t]) => t === 'goal' || t === 'penalty').length;
+      if (!g || !pl.n) continue;
+      if (!map.has(k)) map.set(k, new Map());
+      const mm = map.get(k), pk = pl.t + '|' + pl.n.toLowerCase(), r = mm.get(pk) || { n: pl.n, t: pl.t, g: 0 };
+      r.g += g; mm.set(pk, r);
+    }
+  }
+  return [...map.keys()].sort().reverse().map(k => [k, [...map.get(k).values()].sort((a, b) => b.g - a.g || a.n.localeCompare(b.n))]);
+}
+function renderRPer(kind) {
+  const view = $('#v-r-' + (kind === 'w' ? 'week' : 'maand'));
+  const per = new Map(livePeriods(kind)), keys = closedKeys([...per.keys()], kind);
+  const prop = kind === 'w' ? 'wper' : 'mper';
+  if (!S[prop] || !keys.includes(S[prop])) S[prop] = keys[0];
+  const i = keys.indexOf(S[prop]), key = S[prop], list = per.get(key) || [];
+  const lbl = kind === 'w' ? weekLbl(key) : monthLbl(key);
+  const rk = r => 1 + list.filter(x => x.g > r.g).length;
+  const places = [1, 2, 3].map(n => list.filter(r => rk(r) === n));
+  const card = n => { const ps = places[n - 1]; if (!ps.length) return '';
+    return `<article class="rcard p${n}"><div class="mini m${n}">${n}</div><div class="nm">${ps.slice(0, 3).map(r => esc(r.n)).join('<br>')}${ps.length > 3 ? `<div class="note">+ ${ps.length - 3} anderen</div>` : ''}</div>
+      <div class="note">${esc([...new Set(ps.slice(0, 3).map(r => S.tname(r.t)))].join(' · '))}</div><div class="g">${ps[0].g}</div><div class="note">${ps[0].g === 1 ? 'goal' : 'goals'}</div></article>`; };
+  view.innerHTML = `<div class="head"><p class="note">${kind === 'w' ? 'Meeste goals van maandag tot zondag. Wisselt elke zondag om 22u.' : 'Meeste goals in de volledige maand. Wisselt op de 1e van elke maand.'} Evenveel goals = gedeelde plaats.</p>
+      <div class="stepper"><button type="button" data-ps="1" ${i >= keys.length - 1 ? 'disabled' : ''} aria-label="Vorige">‹</button><span>${esc(lbl)}</span><button type="button" data-ps="-1" ${i <= 0 ? 'disabled' : ''} aria-label="Volgende">›</button></div></div>` +
+    (!list.length ? empty(kind === 'w' ? 'Geen goals in deze week (of niet gespeeld).' : 'Geen goals in deze maand.') :
+    `<div class="big3">${card(1)}${card(2)}${card(3)}</div>
+    <h3 style="margin:8px 0 10px">Alle doelpuntenmakers · ${esc(lbl)}</h3>
+    <ol class="list">${list.map(r => `<li${r.t === S.team ? ' style="background:var(--or-soft)"' : ''}><span class="pos">${rk(r)}</span><span class="who"><b>${esc(r.n)}</b><span>${esc(S.tname(r.t))}</span></span><span class="gpill">${BALL}${r.g}</span></li>`).join('')}</ol>`);
+}
+function renderUitslagen() {
+  const weeks = new Map();
+  for (const m of S.cal) { if (!m.startTime) continue; const k = monday(m.startTime); if (!weeks.has(k)) weeks.set(k, []); weeks.get(k).push(m); }
+  const keys = [...weeks.keys()].sort();
+  if (!keys.length) { $('#v-r-uitslagen').innerHTML = empty('Geen matchen gevonden.'); return; }
+  if (!S.uper || !weeks.has(S.uper)) { const last = lastWeekKey(); const done = keys.filter(k => k <= last && weeks.get(k).some(m => m.state === 'finished')); S.uper = done.length ? done[done.length - 1] : keys[0]; }
+  const i = keys.indexOf(S.uper), list = weeks.get(S.uper).slice().sort((a, b) => a.startTime.localeCompare(b.startTime));
+  const DAYS = ['zondag', 'maandag', 'dinsdag', 'woensdag', 'donderdag', 'vrijdag', 'zaterdag'];
+  let lastDay = '', html = '';
+  for (const m of list) {
+    const day = m.startTime.slice(0, 10);
+    if (day !== lastDay) { const [y, mo, d] = day.split('-').map(Number); html += `${lastDay ? '</ol>' : ''}<h3 style="margin:18px 0 8px">${DAYS[new Date(Date.UTC(y, mo - 1, d)).getUTCDay()]} ${d} ${MONTHS[mo - 1]}</h3><ol class="list">`; lastDay = day; }
+    const o = m.outcome || {}, fin = m.state === 'finished' && o.homeTeamGoals != null;
+    const mine = [m.homeTeam && m.homeTeam.id, m.awayTeam && m.awayTeam.id].map(String).includes(S.team);
+    html += `<li class="res"${mine ? ' style="background:var(--or-soft)"' : ''}><span class="t h">${esc(m.homeTeam && m.homeTeam.name)}</span><span class="sc">${fin ? `${esc(o.homeTeamGoals)} - ${esc(o.awayTeamGoals)}` : esc(m.startTime.slice(11, 16))}</span><span class="t">${esc(m.awayTeam && m.awayTeam.name)}</span></li>`;
+  }
+  $('#v-r-uitslagen').innerHTML = `<div class="head"><p class="note">Uitslagen en komende matchen per week.</p><div class="stepper"><button type="button" data-us="-1" ${i <= 0 ? 'disabled' : ''} aria-label="Vorige week">‹</button><span>${esc(weekLbl(S.uper))}</span><button type="button" data-us="1" ${i >= keys.length - 1 ? 'disabled' : ''} aria-label="Volgende week">›</button></div></div>` + html + '</ol>';
+}
+function renderRTop() {
+  const rows = filt(S.players.filter(p => p.g > 0)).sort((a, b) => b.g - a.g || a.min - b.min).slice(0, 50);
+  $('#v-r-top').innerHTML = !rows.length ? empty('Nog geen doelpunten.') :
+    `<div class="scroll"><table><thead><tr><th>#</th><th>Speler</th><th>Ploeg</th><th class="n">Goals</th><th class="n">Matchen</th><th class="n hide-s">Min/goal</th></tr></thead><tbody>` +
+    rows.map((r, i) => `<tr${mineCls(r)}><td class="rkc">${1 + rows.filter(x => x.g > r.g).length}</td><td class="name">${esc(r.n)}</td><td>${esc(S.tname(r.t))}</td><td class="n">${goalsTxt(r)}</td><td class="n">${r.mp}</td><td class="n hide-s">${Math.round(r.min / r.g)}</td></tr>`).join('') + '</tbody></table></div>';
+}
+function renderKaarten() {
+  const rows = filt(S.players.filter(p => p.y + p.yr + p.r > 0)).sort((a, b) => (b.yr + b.r) - (a.yr + a.r) || b.y - a.y).slice(0, 50);
+  const teams = S.teams.map(t => { const ps = S.players.filter(p => p.t === t.id); return { ...t, y: ps.reduce((s, p) => s + p.y, 0), r: ps.reduce((s, p) => s + p.yr + p.r, 0) }; }).sort((a, b) => (b.r * 3 + b.y) - (a.r * 3 + a.y));
+  $('#v-r-kaarten').innerHTML = '<div class="grid2"><div>' + (!rows.length ? empty('Nog geen kaarten.') :
+    `<div class="scroll"><table><thead><tr><th>Speler</th><th>Ploeg</th><th class="n">Geel</th><th class="n">2× geel</th><th class="n">Rood</th></tr></thead><tbody>` +
+    rows.map(r => `<tr${mineCls(r)}><td class="name">${esc(r.n)}</td><td>${esc(S.tname(r.t))}</td><td class="n">${r.y || '–'}</td><td class="n">${r.yr || '–'}</td><td class="n">${r.r || '–'}</td></tr>`).join('') + '</tbody></table></div>') +
+    `</div><div><div class="scroll"><table><thead><tr><th>Ploeg</th><th class="n"><span class="card cy"></span></th><th class="n"><span class="card cr"></span></th></tr></thead><tbody>` +
+    teams.map(t => `<tr${t.id === S.team ? ' class="mine"' : ''}><td class="name">${esc(t.name)}</td><td class="n">${t.y}</td><td class="n">${t.r}</td></tr>`).join('') + '</tbody></table></div><p class="note">Meeste kaarten bovenaan (rood telt 3×).</p></div></div>';
+}
+function renderMin() {
+  const rows = filt(S.players.filter(p => p.mp > 0)).sort((a, b) => b.min - a.min).slice(0, 50);
+  $('#v-r-minuten').innerHTML = !rows.length ? empty('Nog geen minuten.') :
+    `<div class="scroll"><table><thead><tr><th>#</th><th>Speler</th><th>Ploeg</th><th class="n">Minuten</th><th class="n">Matchen</th><th class="n hide-s">Basis</th></tr></thead><tbody>` +
+    rows.map((r, i) => `<tr${mineCls(r)}><td class="rkc">${i + 1}</td><td class="name">${esc(r.n)}</td><td>${esc(S.tname(r.t))}</td><td class="n">${r.min}</td><td class="n">${r.mp}</td><td class="n hide-s">${r.bs}</td></tr>`).join('') + '</tbody></table></div>';
+}
+function renderRank() {
+  $('#v-r-klassement').innerHTML = !S.ranking.length ? empty('Geen klassement beschikbaar.') :
+    `<div class="scroll"><table><thead><tr><th>#</th><th>Ploeg</th><th class="n">M</th><th class="n">W</th><th class="n">G</th><th class="n">V</th><th class="n">+/−</th><th class="n">Ptn</th></tr></thead><tbody>` +
+    S.ranking.map(t => `<tr${String(t.teamId) === S.team ? ' class="mine"' : ''}><td class="rkc">${esc(t.position)}</td><td class="name">${esc(t.name)}</td><td class="n">${esc(t.matchesPlayed)}</td><td class="n">${esc(t.matchesWon)}</td><td class="n">${esc(t.matchesDrawn)}</td><td class="n">${esc(t.matchesLost)}</td><td class="n">${esc(t.goalsFor)}-${esc(t.goalsAgainst)}</td><td class="n"><b>${esc(t.points)}</b></td></tr>`).join('') + '</tbody></table></div>';
+}
+
+/* ---------- routing ---------- */
+function route() { const h = location.hash.slice(1); return RVIEWS[h] ? h : 'belgie'; }
+function render() {
+  const r = route(), onB = r === 'belgie';
+  $('#p-belgie').classList.toggle('on', onB); $('#p-reeks').classList.toggle('on', !onB);
+  document.querySelectorAll('.navbtn').forEach(b => b.setAttribute('aria-current', (b.dataset.go === 'belgie') === onB ? 'page' : 'false'));
+  if (onB) return;
+  if (!S.started) startReeks();
+  document.querySelectorAll('#rtabs .chip').forEach(b => b.setAttribute('aria-pressed', b.dataset.go === r ? 'true' : 'false'));
+  document.querySelectorAll('.view').forEach(s => s.classList.toggle('on', s.id === 'v-' + r));
+  $('#vtitle').textContent = r === 'r-ploeg' && S.tname ? S.tname(S.team) : RVIEWS[r];
+  $('#q').hidden = ['r-klassement', 'r-week', 'r-maand', 'r-uitslagen'].includes(r);
+  if (!S.tname) return;
+  renderBoard();
+  ({ 'r-ploeg': renderPloeg, 'r-uitslagen': renderUitslagen, 'r-week': () => renderRPer('w'), 'r-maand': () => renderRPer('m'), 'r-top': renderRTop, 'r-kaarten': renderKaarten, 'r-minuten': renderMin, 'r-klassement': renderRank })[r]();
+}
+function go(h) { if (location.hash === '#' + h) render(); else location.hash = h; }
+function startReeks(sid, teamId) {
+  S.started = true;
+  discoverSeries().then(list => { S.series = list; fillLevels(); syncPickers(); }).catch(() => { $('#niveau').innerHTML = '<option value="">Lijst niet beschikbaar</option>'; });
+  load(sid || store.get('rs-sid') || DEFAULT_SID, false, teamId);
+}
+
+/* ---------- zoeken ---------- */
+const cleanName = n => { const s = String(n || '').replace(/^Voetbal\s*:\s*/i, ''); const i = s.indexOf(' - '); return i > -1 ? s.slice(i + 3) : s; };
+const doSearch = (q, type, first) => gql('DoSearch', { first, offset: 0, filter: { query: q, type }, language: 'nl', channel: 'belgianfootball', location: 'BE' }, H.search).then(d => (d.search && d.search.results) || []);
+let searchTimer = 0, searchNr = 0;
+function showResults(html) { const r = $('#results'); r.innerHTML = html; r.hidden = !html; }
+async function runSearch() {
+  const q = $('#find').value.trim(), nr = ++searchNr, sid = parseSid(q);
+  if (sid) { showResults(`<button type="button" data-sid="${esc(sid)}">Reeks ${esc(sid)} laden</button>`); return; }
+  if (q.length < 3) { showResults(''); return; }
+  showResults('<p>Zoeken…</p>');
+  try {
+    const [series, clubs] = await Promise.all([doSearch(q, 'competition', 25), doSearch(q, 'club', 8)]);
+    if (nr !== searchNr) return;
+    const html = (series.length ? '<h4>Reeksen</h4>' + series.map(s => `<button type="button" data-sid="${esc(s.id)}">${esc(cleanName(s.seriesName))}</button>`).join('') : '') +
+      (clubs.length ? '<h4>Clubs</h4>' + clubs.map(c => `<button type="button" data-club="${esc(c.id)}">${esc(c.clubName)} <small>stamnr. ${esc(c.registrationNumber)}</small></button>`).join('') : '');
+    showResults(html || '<p>Niets gevonden. Probeer bv. "2 Provinciaal Ovl" of een clubnaam.</p>');
+  } catch (e) { if (nr === searchNr) showResults('<p>Zoeken lukt niet: ' + esc(e.message) + '</p>'); }
+}
+async function openClub(clubId) {
+  showResults('<p>Ploegen van de club ophalen…</p>');
+  try {
+    const teams = (await gql('getClubTeams', { clubId, language: 'nl' }, H.clubTeams)).clubTeams || [];
+    const rows = await Promise.all(teams.slice(0, 30).map(async t => {
+      const [a, b] = await Promise.all([
+        gql('GetLastPlayedMatch', { teamId: t.id, language: 'nl' }, H.last).then(d => d.lastPlayedMatch).catch(() => null),
+        gql('GetUpcomingMatch', { teamId: t.id, language: 'nl' }, H.next).then(d => d.upcomingMatch).catch(() => null)]);
+      const ser = [b, a].map(m => m && m.series).find(s => s && /^CHP_/.test(s.id));
+      return ser ? { team: t, ser } : null;
+    }));
+    const ok = rows.filter(Boolean);
+    showResults(ok.length ? '<h4>Kies een ploeg</h4>' + ok.map(r => `<button type="button" data-sid="${esc(r.ser.id)}" data-team="${esc(r.team.id)}">${esc(r.team.name)} <small>${esc(r.ser.name)}</small></button>`).join('') : '<p>Geen ploegen met een competitie gevonden.</p>');
+  } catch (e) { showResults('<p>Club laden lukt niet: ' + esc(e.message) + '</p>'); }
+}
+
+/* ---------- events ---------- */
+document.querySelectorAll('[data-go]').forEach(b => b.addEventListener('click', () => go(b.dataset.go)));
+document.querySelectorAll('[data-jump]').forEach(b => b.addEventListener('click', () => document.getElementById(b.dataset.jump).scrollIntoView()));
+document.addEventListener('click', e => {
+  const l = e.target.closest('.lnk[data-s]');
+  if (l && D) { const s = sOf(+l.dataset.s); if (!s[0]) return; if (S.started) load(s[0], false, l.dataset.t); else startReeks(s[0], l.dataset.t); go('r-ploeg'); scrollTo(0, 0); }
+  const rl = e.target.closest('.lnk[data-sid]');
+  if (rl) { if (S.started) load(rl.dataset.sid); else startReeks(rl.dataset.sid); go('r-ploeg'); scrollTo(0, 0); }
+  if (!e.target.closest('.find')) showResults('');
+});
+if (D) {
+  const stepPer = dir => { const kl = closedKeys(perKeys(B.kind).map(([k]) => k), B.kind), n = kl[kl.indexOf(B.per) + dir]; if (n) { B.per = n; renderPer(); } };
+  $('#p-prev').addEventListener('click', () => stepPer(1));
+  $('#p-next').addEventListener('click', () => stepPer(-1));
+  document.querySelectorAll('[data-kind]').forEach(b => b.addEventListener('click', () => { B.kind = b.dataset.kind; B.per = null; renderPer(); }));
+  $('#p-chips').addEventListener('click', e => { const c = e.target.closest('[data-plvl]'); if (c) { B.plvl = +c.dataset.plvl; renderPer(); } });
+  $('#x-more').addEventListener('click', () => { B.xShow += 12; renderSingle(); });
+  $('#t-more').addEventListener('click', () => { B.tShow += 50; renderTop(); });
+  $('#t-q').addEventListener('input', () => { B.tShow = 50; renderTop(); });
+  $('#t-chips').addEventListener('click', e => { const c = e.target.closest('[data-lvl]'); if (!c) return; B.lvl = +c.dataset.lvl; B.tShow = 50; renderChips(); renderTop(); });
+}
+$('#find').addEventListener('input', () => { clearTimeout(searchTimer); searchTimer = setTimeout(runSearch, 350); });
+$('#find').addEventListener('keydown', e => { if (e.key === 'Escape') showResults(''); });
+$('#results').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  if (b.dataset.club) { openClub(b.dataset.club); return; }
+  if (b.dataset.sid) { showResults(''); $('#find').value = ''; load(b.dataset.sid, false, b.dataset.team); }
+});
+$('#niveau').addEventListener('change', () => { fillReeks($('#niveau').value); if (!$('#niveau').value) $('#find').focus(); });
+$('#reeks').addEventListener('change', () => { if ($('#reeks').value) load($('#reeks').value); });
+$('#team').addEventListener('change', () => { S.team = $('#team').value; store.set('rs-team-' + S.sid, S.team); render(); });
+$('#q').addEventListener('input', render);
+$('#reload').addEventListener('click', () => { if (!S.started) { go('r-ploeg'); return; } S.sid && load(S.sid, true); go(route() === 'belgie' ? 'r-ploeg' : route()); });
+$('#v-r-ploeg').addEventListener('click', e => { const th = e.target.closest('th[data-k]'); if (!th) return; const k = th.dataset.k; S.sort = { k, d: S.sort.k === k ? -S.sort.d : -1 }; renderPloeg(); });
+['w', 'm'].forEach(kind => $('#v-r-' + (kind === 'w' ? 'week' : 'maand')).addEventListener('click', e => {
+  const st = e.target.closest('[data-ps]'); if (!st) return;
+  const prop = kind === 'w' ? 'wper' : 'mper', keys = closedKeys(livePeriods(kind).map(([k]) => k), kind), n = keys[keys.indexOf(S[prop]) + +st.dataset.ps];
+  if (n) { S[prop] = n; renderRPer(kind); }
+}));
+$('#v-r-uitslagen').addEventListener('click', e => {
+  const st = e.target.closest('[data-us]'); if (!st) return;
+  const keys = [...new Set(S.cal.filter(m => m.startTime).map(m => monday(m.startTime)))].sort(), n = keys[keys.indexOf(S.uper) + +st.dataset.us];
+  if (n) { S.uper = n; renderUitslagen(); }
+});
+addEventListener('hashchange', render);
+
+renderBelgie();
+render();
+}
+</script>
+</body>
+</html>
