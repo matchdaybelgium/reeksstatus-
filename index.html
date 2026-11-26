@@ -626,7 +626,7 @@ async function load(sid, force, teamId) {
     render();
   } catch (e) {
     $('#title').textContent = 'RBFA niet bereikbaar';
-    setStatus('Fout: ' + e.message + '. Open de site via internet (bv. Netlify) en niet als los bestand.', null);
+    setStatus('RBFA is niet bereikbaar vanaf dit netwerk. Op school- of werknetwerken worden sportsites vaak geblokkeerd: probeer via 4G of thuis-wifi.', null);
   }
 }
 function filt(rows) { const q = $('#q').value.trim().toLowerCase(); return q ? rows.filter(r => r.n.toLowerCase().includes(q) || S.tname(r.t).toLowerCase().includes(q)) : rows; }
